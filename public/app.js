@@ -97,13 +97,48 @@ function getOperatorPortraitSvg(slotIdx, isAlive, isFlashed) {
   </svg>`;
 }
 
-// Default 5 Human Operators Roster
+// 11 CT-Side & 11 T-Side Full-Bleed CS2 Lobby Card Backgrounds
+const CT_CARD_BACKGROUNDS = [
+  { id: 1, url: '/assets/ct-model-01.jpg', label: '01: SAS // WAREHOUSE // M4A1-S' },
+  { id: 2, url: '/assets/ct-model-02.jpg', label: '02: GIGN // NUKE SILO // AWP ASIIMOV (ADS)' },
+  { id: 3, url: '/assets/ct-model-03.jpg', label: '03: FROGMAN // ANCIENT // M4A4 HOWL (KNEEL)' },
+  { id: 4, url: '/assets/ct-model-04.jpg', label: '04: GSG-9 // OVERPASS // PRINTSTREAM (LOW)' },
+  { id: 5, url: '/assets/ct-model-05.jpg', label: '05: FBI SWAT // OFFICE // USP-S KILL CONFIRMED' },
+  { id: 6, url: '/assets/ct-model-06.jpg', label: '06: KSK // ANUBIS // FAMAS COMMEMORATION' },
+  { id: 7, url: '/assets/ct-model-07.jpg', label: '07: FBI HRT // VERTIGO // MP9 STARLIGHT (LOW)' },
+  { id: 8, url: '/assets/ct-model-08.jpg', label: '08: DESERT SAS // MIRAGE // BLUE PHOSPHOR' },
+  { id: 9, url: '/assets/ct-model-09.jpg', label: '09: JTF2 // TRAIN // AWP DRAGON LORE' },
+  { id: 10, url: '/assets/ct-model-10.jpg', label: '10: GENDARMERIE // CACHE // DEAGLE BLAZE' },
+  { id: 11, url: '/assets/ct-model-11.jpg', label: '11: BREACHER // INFERNO // M4A4 NEO-NOIR' }
+];
+
+const T_CARD_BACKGROUNDS = [
+  { id: 1, url: '/assets/t-model-01.jpg', label: '01: PHOENIX // WAREHOUSE // CLASSIC AK-47' },
+  { id: 2, url: '/assets/t-model-02.jpg', label: '02: PROFESSIONALS // VAULT // GOLD ARABESQUE' },
+  { id: 3, url: '/assets/t-model-03.jpg', label: '03: ELITE CREW // DUST II // AWP GUNGNIR' },
+  { id: 4, url: '/assets/t-model-04.jpg', label: '04: SABRE // OVERPASS // RIFLE VULCAN (LOW)' },
+  { id: 5, url: '/assets/t-model-05.jpg', label: '05: GUERRILLA // ANUBIS // WILD LOTUS (CROUCH)' },
+  { id: 6, url: '/assets/t-model-06.jpg', label: '06: AZTEC REBEL // ANCIENT // HOWL (KNEEL)' },
+  { id: 7, url: '/assets/t-model-07.jpg', label: '07: STREET SOLDIER // NEON // DEAGLE FADE' },
+  { id: 8, url: '/assets/t-model-08.jpg', label: '08: CARTEL RAIDER // MIRAGE // FUEL INJECTOR' },
+  { id: 9, url: '/assets/t-model-09.jpg', label: '09: BALKAN HEAVY // INFERNO // REDLINE' },
+  { id: 10, url: '/assets/t-model-10.jpg', label: '10: MIAMI DARRYL // VAULT // CASE HARDENED' },
+  { id: 11, url: '/assets/t-model-11.jpg', label: '11: MARKSMAN // ARCHWAY // AWP PRINCE (ADS)' }
+];
+
+function getCardBackgroundUrl(side, bgId) {
+  const list = side === 'T' ? T_CARD_BACKGROUNDS : CT_CARD_BACKGROUNDS;
+  const found = list.find(item => item.id === Number(bgId)) || list[0];
+  return found.url;
+}
+
+// Default 5 Human Operators Roster (each with a distinct default CT and T lobby background!)
 const DEFAULT_CALLSIGNS = [
-  { name: 'VORTEX', role: 'ENTRY // RIFLER' },
-  { name: 'KAIROS', role: 'AWP SPECIALIST' },
-  { name: 'NYX', role: 'IN-GAME LEADER' },
-  { name: 'HEX', role: 'SITE ANCHOR' },
-  { name: 'RONIN', role: 'LURK // CLUTCH' }
+  { name: 'VORTEX', role: 'ENTRY // RIFLER', ctBg: 4, tBg: 2 },
+  { name: 'KAIROS', role: 'AWP SPECIALIST', ctBg: 2, tBg: 3 },
+  { name: 'NYX', role: 'IN-GAME LEADER', ctBg: 3, tBg: 1 },
+  { name: 'HEX', role: 'SITE ANCHOR', ctBg: 8, tBg: 8 },
+  { name: 'RONIN', role: 'LURK // CLUTCH', ctBg: 9, tBg: 10 }
 ];
 
 const BOT_NAMES = [
@@ -500,27 +535,31 @@ function renderPlayersStage() {
 
     const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
     const dmgPct = Math.min(100, Math.round((p.roundDamage / 500) * 100));
-    const sideClass = (p.team || appState.humanSide) === 'T' ? 'side-t' : 'side-ct';
+    const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
+    const sideClass = currentSide === 'T' ? 'side-t' : 'side-ct';
+    const slotCfg = appState.customCallsigns[idx] || DEFAULT_CALLSIGNS[idx] || DEFAULT_CALLSIGNS[0];
+    const activeBgId = currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1);
+    const bgUrl = getCardBackgroundUrl(currentSide, activeBgId);
 
     return `
-      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''}" id="player-card-${idx + 1}">
+      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''}" id="player-card-${idx + 1}" style="--card-model-bg: url('${bgUrl}');">
         
         <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
         <div class="card-zone-identity">
           <div class="operator-top-row">
-            <span class="slot-index-tag">OP // 0${idx + 1}</span>
-            <span class="role-badge">${p.role || DEFAULT_CALLSIGNS[idx].role}</span>
+            <span class="slot-index-tag" data-cycle-bg="${idx}" title="Click to cycle ${currentSide} Card Skin (#${String(activeBgId).padStart(2, '0')} / 11)" style="cursor:pointer;">OP // 0${idx + 1} &bull; SKIN ${String(activeBgId).padStart(2, '0')}</span>
+            <span class="role-badge" data-edit-role="${idx}" title="Click to change player role">${p.role || slotCfg.role}</span>
             <div class="round-kills-pips" title="Round Kills: ${p.roundKills}">${rkDiamonds}</div>
           </div>
 
           <div class="operator-hero-row">
             <div class="operator-name-block">
-              <h2 class="operator-callsign">${p.name}</h2>
+              <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign" style="cursor:pointer;">${p.name}</h2>
               <div class="operator-sub-status">
                 ${statusPills.join('')}
               </div>
             </div>
-            <div class="operator-avatar-frame">
+            <div class="operator-avatar-frame" data-cycle-bg="${idx}" title="Click to cycle ${currentSide} Lobby Background (${activeBgId}/11)" style="cursor:pointer;">
               ${getOperatorPortraitSvg(idx, isAlive, isFlashed)}
             </div>
           </div>
@@ -1017,7 +1056,9 @@ function initRosterEditor() {
       if (Array.isArray(parsed) && parsed.length === 5) {
         appState.customCallsigns = parsed.map((item, i) => ({
           name: item.name || DEFAULT_CALLSIGNS[i].name,
-          role: item.role || DEFAULT_CALLSIGNS[i].role
+          role: item.role || DEFAULT_CALLSIGNS[i].role,
+          ctBg: Number(item.ctBg) || DEFAULT_CALLSIGNS[i].ctBg,
+          tBg: Number(item.tBg) || DEFAULT_CALLSIGNS[i].tBg
         }));
         appState.players.forEach((p, i) => {
           if (appState.customCallsigns[i]) {
@@ -1055,6 +1096,14 @@ function initRosterEditor() {
     ).join('');
     const isCustomRole = !ROLE_PRESETS.includes(c.role);
 
+    const ctBgOptions = CT_CARD_BACKGROUNDS.map(bg =>
+      `<option value="${bg.id}" ${Number(c.ctBg || DEFAULT_CALLSIGNS[idx].ctBg) === bg.id ? 'selected' : ''}>${bg.label}</option>`
+    ).join('');
+
+    const tBgOptions = T_CARD_BACKGROUNDS.map(bg =>
+      `<option value="${bg.id}" ${Number(c.tBg || DEFAULT_CALLSIGNS[idx].tBg) === bg.id ? 'selected' : ''}>${bg.label}</option>`
+    ).join('');
+
     return `
       <div class="roster-slot-card">
         <div class="roster-input-group">
@@ -1072,6 +1121,14 @@ function initRosterEditor() {
           <label for="role-input-${idx}">ROLE TITLE</label>
           <input type="text" id="role-input-${idx}" value="${c.role}" maxlength="20" placeholder="e.g. AWP SPECIALIST" />
         </div>
+        <div class="roster-input-group">
+          <label for="ct-bg-select-${idx}">CT LOBBY SKIN (1-11)</label>
+          <select id="ct-bg-select-${idx}">${ctBgOptions}</select>
+        </div>
+        <div class="roster-input-group">
+          <label for="t-bg-select-${idx}">T LOBBY SKIN (1-11)</label>
+          <select id="t-bg-select-${idx}">${tBgOptions}</select>
+        </div>
       </div>
     `;
   }).join('');
@@ -1080,6 +1137,8 @@ function initRosterEditor() {
     const nameInput = document.getElementById(`callsign-input-${idx}`);
     const rolePreset = document.getElementById(`role-preset-${idx}`);
     const roleInput = document.getElementById(`role-input-${idx}`);
+    const ctBgSelect = document.getElementById(`ct-bg-select-${idx}`);
+    const tBgSelect = document.getElementById(`t-bg-select-${idx}`);
 
     nameInput.addEventListener('input', (e) => {
       const val = e.target.value.trim().toUpperCase() || `OP 0${idx + 1}`;
@@ -1117,16 +1176,77 @@ function initRosterEditor() {
       saveCustomRoster();
       renderAll();
     });
+
+    if (ctBgSelect) {
+      ctBgSelect.addEventListener('change', (e) => {
+        appState.customCallsigns[idx].ctBg = Number(e.target.value) || 1;
+        saveCustomRoster();
+        renderAll();
+      });
+    }
+
+    if (tBgSelect) {
+      tBgSelect.addEventListener('change', (e) => {
+        appState.customCallsigns[idx].tBg = Number(e.target.value) || 1;
+        saveCustomRoster();
+        renderAll();
+      });
+    }
   });
+}
+
+function cyclePlayerCardSkin(slotIdx) {
+  const cfg = appState.customCallsigns[slotIdx];
+  if (!cfg) return;
+  const isT = appState.humanSide === 'T';
+  if (isT) {
+    cfg.tBg = ((Number(cfg.tBg) || 1) % 11) + 1;
+    const sel = document.getElementById(`t-bg-select-${slotIdx}`);
+    if (sel) sel.value = String(cfg.tBg);
+    const skinInfo = T_CARD_BACKGROUNDS.find(b => b.id === cfg.tBg);
+    appState.calloutText = `OP 0${slotIdx + 1} (${cfg.name}) T SKIN -> ${skinInfo ? skinInfo.label : cfg.tBg}`;
+  } else {
+    cfg.ctBg = ((Number(cfg.ctBg) || 1) % 11) + 1;
+    const sel = document.getElementById(`ct-bg-select-${slotIdx}`);
+    if (sel) sel.value = String(cfg.ctBg);
+    const skinInfo = CT_CARD_BACKGROUNDS.find(b => b.id === cfg.ctBg);
+    appState.calloutText = `OP 0${slotIdx + 1} (${cfg.name}) CT SKIN -> ${skinInfo ? skinInfo.label : cfg.ctBg}`;
+  }
+  appState.calloutHighlight = false;
+  saveCustomRoster();
+  renderAll();
+}
+
+function shuffleAllCardSkins() {
+  const poolCt = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].sort(() => Math.random() - 0.5);
+  const poolT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].sort(() => Math.random() - 0.5);
+  appState.customCallsigns.forEach((cfg, idx) => {
+    cfg.ctBg = poolCt[idx];
+    cfg.tBg = poolT[idx];
+    const ctSel = document.getElementById(`ct-bg-select-${idx}`);
+    const tSel = document.getElementById(`t-bg-select-${idx}`);
+    if (ctSel) ctSel.value = String(cfg.ctBg);
+    if (tSel) tSel.value = String(cfg.tBg);
+  });
+  appState.calloutText = `SHUFFLED LOBBY SKINS // ASSIGNED UNIQUE ${appState.humanSide} OPERATOR BACKGROUNDS (11 CT / 11 T POOL)`;
+  appState.calloutHighlight = true;
+  saveCustomRoster();
+  renderAll();
 }
 
 function bindControls() {
   const modal = document.getElementById('gsi-modal');
 
-  // Delegate clicks on player card role badges or callsigns to open modal & focus input
+  // Delegate clicks on player card role badges, callsigns, or skin cyclers
   const stageGrid = document.getElementById('players-stage-grid');
   if (stageGrid) {
     stageGrid.addEventListener('click', (e) => {
+      const cycleEl = e.target.closest('[data-cycle-bg]');
+      if (cycleEl) {
+        const idx = Number(cycleEl.getAttribute('data-cycle-bg'));
+        cyclePlayerCardSkin(idx);
+        return;
+      }
       const roleEl = e.target.closest('[data-edit-role]');
       if (roleEl) {
         const idx = Number(roleEl.getAttribute('data-edit-role'));
@@ -1142,6 +1262,13 @@ function bindControls() {
         const inp = document.getElementById(`callsign-input-${idx}`);
         if (inp) { inp.focus(); inp.select(); }
       }
+    });
+  }
+
+  const btnShuffleBgs = document.getElementById('btn-shuffle-bgs');
+  if (btnShuffleBgs) {
+    btnShuffleBgs.addEventListener('click', () => {
+      shuffleAllCardSkins();
     });
   }
 
