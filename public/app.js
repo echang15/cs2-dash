@@ -134,11 +134,11 @@ function getCardBackgroundUrl(side, bgId) {
 
 // Default 5 Human Operators Roster (each with a distinct default CT and T lobby background!)
 const DEFAULT_CALLSIGNS = [
-  { name: 'VORTEX', role: 'ENTRY // RIFLER', ctBg: 4, tBg: 2 },
-  { name: 'KAIROS', role: 'AWP SPECIALIST', ctBg: 2, tBg: 3 },
-  { name: 'NYX', role: 'IN-GAME LEADER', ctBg: 3, tBg: 1 },
-  { name: 'HEX', role: 'SITE ANCHOR', ctBg: 8, tBg: 8 },
-  { name: 'RONIN', role: 'LURK // CLUTCH', ctBg: 9, tBg: 10 }
+  { name: 'VORTEX', ctBg: 4, tBg: 2 },
+  { name: 'KAIROS', ctBg: 2, tBg: 3 },
+  { name: 'NYX', ctBg: 3, tBg: 1 },
+  { name: 'HEX', ctBg: 8, tBg: 8 },
+  { name: 'RONIN', ctBg: 9, tBg: 10 }
 ];
 
 const BOT_NAMES = [
@@ -169,10 +169,35 @@ const appState = {
   players: [],
   bots: [],
   killfeed: [],
+  killCelebrations: {},
+  prevGsiKills: {},
   damageTrails: [100, 100, 100, 100, 100],
   lanIp: window.location.hostname || '127.0.0.1',
   port: window.location.port || '3000'
 };
+
+function triggerPlayerKillFlash(slotIdx, details = {}) {
+  if (slotIdx < 0 || slotIdx > 4) return;
+  if (!appState.killCelebrations) appState.killCelebrations = {};
+  const now = Date.now();
+  const rk = Number(details.roundKills) || 1;
+  const labelMap = {
+    1: 'ELIMINATION // +1 KILL',
+    2: 'DOUBLE KILL // 2K',
+    3: 'TRIPLE KILL // 3K',
+    4: 'QUAD KILL // 4K',
+    5: 'ACE // 5K WIPE!'
+  };
+  appState.killCelebrations[slotIdx] = {
+    startedAt: now,
+    expiresAt: now + 1850,
+    headline: labelMap[Math.min(5, Math.max(1, rk))] || 'ELIMINATION // +1 KILL',
+    victim: details.victim || 'TARGET',
+    weaponName: details.weaponName || 'RIFLE',
+    isHs: Boolean(details.isHs),
+    roundKills: rk
+  };
+}
 
 function createInitialSimSquad(side = 'CT', count = appState.targetSquadSize) {
   const isCT = side === 'CT';
