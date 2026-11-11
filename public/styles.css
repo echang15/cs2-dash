@@ -106,8 +106,12 @@ html, body {
 .broadcast-stage {
   width: var(--stage-w, 1920px);
   height: var(--stage-h, 1080px);
-  transform: scale(var(--stage-scale));
+  transform: scale(var(--stage-scale)) translateZ(0);
   transform-origin: center center;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
+  will-change: transform;
+  contain: layout style paint;
   display: grid;
   grid-template-rows: 118px 46px 1fr;
   gap: 12px;
@@ -271,6 +275,7 @@ html, body {
   gap: 14px;
   font-family: var(--font-mono);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
 
@@ -291,6 +296,7 @@ html, body {
   padding: 8px 14px;
   background: rgba(0, 0, 0, 0.36);
   border: 1px solid var(--border-subtle);
+  font-variant-numeric: tabular-nums;
 }
 
 .alive-header {
@@ -473,6 +479,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 16px;
+  height: 46px;
   margin: 2px 0;
 }
 
@@ -623,23 +630,46 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 30px;
   overflow: hidden;
   flex: 1;
   min-width: 0;
+  contain: layout paint;
 }
 
 .kill-pill {
   display: inline-flex;
   align-items: center;
+  height: 28px;
   gap: 8px;
-  padding: 4px 11px;
+  padding: 0 11px;
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--border-subtle);
   font-family: var(--font-tactical);
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
+  backface-visibility: hidden;
+}
+
+.kill-pill.kill-pill-latest {
+  border-color: var(--squad-border);
+  background: rgba(44, 177, 255, 0.09);
+  animation: killPillSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+@keyframes killPillSlideIn {
+  from {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .kill-attacker.human, .kill-victim.human {
@@ -878,7 +908,10 @@ html, body {
   grid-template-rows: 232px 128px 220px 138px 1fr;
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s ease, border-color 0.2s ease, opacity 0.25s ease;
+  contain: layout paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: border-color 0.2s ease, opacity 0.25s ease;
 }
 
 .player-stadium-card.side-ct {
@@ -975,40 +1008,36 @@ html, body {
   filter: grayscale(0.85);
 }
 
-/* Stadium Kill Flash & Elimination Callout Animation */
+/* Stadium Kill Flash & Elimination Callout Animation (Zero-Shift GPU Glow) */
 @keyframes stadiumKillCardFlash {
   0% {
     border-color: #ffffff;
     border-top-color: #ffffff;
-    box-shadow: 0 0 46px rgba(255, 215, 70, 0.95), inset 0 0 80px rgba(255, 230, 120, 0.72);
-    transform: translateY(-6px) scale(1.014);
+    box-shadow: inset 0 0 80px rgba(255, 230, 120, 0.72), inset 0 0 24px rgba(255, 215, 70, 0.85);
   }
   18% {
     border-color: #ffcf33;
     border-top-color: #ffe875;
-    box-shadow: 0 0 34px rgba(255, 196, 38, 0.85), inset 0 0 48px rgba(255, 196, 38, 0.42);
-    transform: translateY(-4px) scale(1.008);
+    box-shadow: inset 0 0 48px rgba(255, 196, 38, 0.45), inset 0 0 16px rgba(255, 196, 38, 0.65);
   }
   65% {
     border-color: var(--squad-accent);
     border-top-color: #ffcf33;
-    box-shadow: 0 0 22px rgba(255, 196, 38, 0.45), inset 0 0 24px rgba(255, 196, 38, 0.2);
-    transform: translateY(-1px) scale(1.002);
+    box-shadow: inset 0 0 24px rgba(255, 196, 38, 0.2);
   }
   100% {
     border-color: var(--border-strong);
     border-top-color: var(--squad-accent);
     box-shadow: none;
-    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes stadiumKillModelSurge {
   0% {
-    filter: brightness(1.65) contrast(1.18) saturate(1.35);
+    filter: brightness(1.55) contrast(1.15) saturate(1.3);
   }
   25% {
-    filter: brightness(1.32) contrast(1.12) saturate(1.22);
+    filter: brightness(1.28) contrast(1.1) saturate(1.18);
   }
   100% {
     filter: brightness(1) contrast(1) saturate(1);
@@ -1018,23 +1047,19 @@ html, body {
 @keyframes killBannerDrop {
   0% {
     opacity: 0;
-    transform: translateY(-14px) scale(0.92);
+    transform: translate3d(0, -10px, 0);
   }
-  12% {
+  14% {
     opacity: 1;
-    transform: translateY(0) scale(1.03);
-  }
-  22% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
   84% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
+    transform: translate3d(0, -6px, 0);
   }
 }
 
@@ -1170,7 +1195,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 6px;
   flex-shrink: 0;
 }
@@ -1564,7 +1590,7 @@ html, body {
 }
 
 .gear-kit-slot {
-  width: 58px;
+  width: 68px;
   height: 54px;
   background: var(--bg-slot-empty);
   border: 1px solid var(--border-subtle);
@@ -2538,4 +2564,352 @@ body.res-5120x1440.view-mode-player .pd-main-grid {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+
+/* ==========================================================================
+   CONNECTED CLIENTS PANEL, ACTIVITY LOG & REAL-TIME TOAST NOTIFICATIONS
+   ========================================================================== */
+.client-status-dot.gsi-active {
+  background: var(--hp-high);
+  box-shadow: 0 0 8px var(--hp-high);
+  animation: clientDotPulse 1.6s infinite ease-in-out;
+}
+
+.client-status-dot.standby {
+  background: var(--ct-primary);
+}
+
+.client-status-dot.offline {
+  background: var(--c4-red);
+}
+
+@keyframes clientDotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.28); opacity: 0.72; }
+}
+
+.client-unread-badge {
+  background: var(--t-primary);
+  color: #06080c;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 2px;
+  line-height: 1.2;
+}
+
+.clients-log-modal {
+  width: 680px;
+  right: 0;
+}
+
+.ctrl-btn.mini-btn {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.clients-split-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 10px;
+}
+
+.clients-subpanel {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--border-strong);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.clients-subpanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 4px;
+}
+
+.clients-subpanel-header strong {
+  color: var(--squad-accent);
+}
+
+.clients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 135px;
+  overflow-y: auto;
+}
+
+.client-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--hp-high);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.client-row.display-row {
+  border-left-color: var(--squad-accent);
+}
+
+.client-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.client-row-title {
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.client-row-sub {
+  font-size: 9px;
+  color: var(--text-secondary);
+}
+
+.client-row-meta {
+  text-align: right;
+  font-size: 9px;
+  color: var(--hp-high);
+  flex-shrink: 0;
+}
+
+.client-empty-row {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 8px 4px;
+}
+
+.connection-log-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 210px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-subtle);
+  padding: 8px;
+}
+
+.log-entry-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 3px solid var(--squad-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.log-entry-row.cat-gsi_connect {
+  border-left-color: var(--hp-high);
+  background: rgba(38, 230, 137, 0.06);
+}
+
+.log-entry-row.cat-gsi_disconnect,
+.log-entry-row.cat-display_disconnect {
+  border-left-color: var(--c4-red);
+  background: rgba(247, 54, 76, 0.06);
+}
+
+.log-entry-row.cat-cfg_download {
+  border-left-color: var(--t-primary);
+}
+
+.log-time {
+  color: var(--text-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.log-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cat-gsi_connect .log-badge {
+  background: rgba(38, 230, 137, 0.2);
+  color: var(--hp-high);
+}
+
+.cat-gsi_disconnect .log-badge,
+.cat-display_disconnect .log-badge {
+  background: rgba(247, 54, 76, 0.2);
+  color: #ff7a89;
+}
+
+.log-text {
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.log-text strong {
+  color: var(--text-primary);
+}
+
+/* Real-Time Broadcast Toast Notification Stack */
+.toast-stack {
+  position: absolute;
+  top: 184px;
+  right: 24px;
+  width: 390px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.toast-card {
+  pointer-events: auto;
+  background: rgba(9, 14, 23, 0.96);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-highlight);
+  border-left: 4px solid var(--squad-accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.85), 0 0 18px rgba(44, 177, 255, 0.16);
+  padding: 11px 14px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+  overflow: hidden;
+  animation: toastSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-card.toast-connect {
+  border-left-color: var(--hp-high);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.85), 0 0 22px rgba(38, 230, 137, 0.22);
+}
+
+.toast-card.toast-disconnect {
+  border-left-color: var(--c4-red);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.85), 0 0 22px rgba(247, 54, 76, 0.24);
+}
+
+.toast-card.toast-warn {
+  border-left-color: var(--t-primary);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(28px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.toast-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toast-category-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--squad-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toast-card.toast-connect .toast-category-tag {
+  color: var(--hp-high);
+}
+
+.toast-card.toast-disconnect .toast-category-tag {
+  color: #ff6978;
+}
+
+.toast-card.toast-warn .toast-category-tag {
+  color: var(--t-primary);
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.toast-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.toast-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.toast-message {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.toast-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--squad-accent);
+  width: 100%;
+  animation: toastProgressShrink var(--toast-duration, 5500ms) linear forwards;
+}
+
+.toast-card.toast-connect .toast-progress-bar {
+  background: var(--hp-high);
+}
+
+.toast-card.toast-disconnect .toast-progress-bar {
+  background: var(--c4-red);
+}
+
+@keyframes toastProgressShrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
 

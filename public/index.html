@@ -113,6 +113,57 @@
           </div>
           <div class="killfeed-items" id="killfeed-items"></div>
 
+          <!-- Live Connected Clients & Activity Log Trigger + Modal -->
+          <div class="sim-hover-container clients-hover-container" id="clients-hover-container">
+            <button type="button" class="sim-hover-trigger clients-trigger-btn" id="clients-hover-trigger" aria-haspopup="true" title="View Connected CS2 GSI Clients, Displays &amp; Connection Logs">
+              <span class="live-dot client-status-dot" id="client-status-dot"></span>
+              <span id="clients-trigger-text">CLIENTS: 0 GSI &bull; 1 DISPLAY</span>
+              <span class="client-unread-badge" id="client-unread-badge" hidden>0</span>
+              <span class="sim-hover-caret">&#9662;</span>
+            </button>
+
+            <div class="sim-hover-modal clients-log-modal" id="clients-log-modal" role="region" aria-label="Connected Clients and Activity Log">
+              <div class="sim-modal-section">
+                <div class="sim-modal-header">
+                  <span class="sim-modal-title">CONNECTED CLIENTS &amp; TELEMETRY LINKS</span>
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <button type="button" class="ctrl-btn mini-btn active" id="btn-toggle-notif-sound" title="Toggle Audio Chime on Client Connect/Disconnect">AUDIO: ON</button>
+                    <button type="button" class="ctrl-btn mini-btn" id="btn-test-client-notif" title="Simulate a Client Connection Notification &amp; Log Entry">TEST ALERT</button>
+                    <button type="button" class="ctrl-btn mini-btn danger" id="btn-reset-clients" title="Reset Connected GSI Roster">/RESET</button>
+                  </div>
+                </div>
+
+                <div class="clients-split-grid">
+                  <div class="clients-subpanel">
+                    <div class="clients-subpanel-header">
+                      <span>CS2 GSI CLIENTS</span>
+                      <strong id="gsi-clients-count-label">0 ACTIVE</strong>
+                    </div>
+                    <div class="clients-list" id="gsi-clients-list">
+                      <div class="client-empty-row">Waiting for CS2 GSI packets on <code>/gsi</code>...</div>
+                    </div>
+                  </div>
+
+                  <div class="clients-subpanel">
+                    <div class="clients-subpanel-header">
+                      <span>BROADCAST DISPLAYS (SSE)</span>
+                      <strong id="display-clients-count-label">1 ACTIVE</strong>
+                    </div>
+                    <div class="clients-list" id="display-clients-list"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sim-modal-section">
+                <div class="sim-modal-header">
+                  <span class="sim-modal-title">LIVE CONNECTION &amp; EVENT LOG</span>
+                  <button type="button" class="ctrl-btn mini-btn" id="btn-clear-client-logs">CLEAR LOGS</button>
+                </div>
+                <div class="connection-log-feed" id="connection-log-feed"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
           <div class="sim-hover-container" id="sim-hover-container">
             <button type="button" class="sim-hover-trigger" id="sim-hover-trigger" aria-haspopup="true">
@@ -168,6 +219,9 @@
         <aside class="ultrawide-tactical-wing" id="ultrawide-tactical-wing" aria-label="32:9 Super Ultrawide Extended Telemetry"></aside>
         <section class="player-detail-view" id="player-detail-view" aria-label="Individual Player Deep-Dive Telemetry"></section>
       </div>
+
+      <!-- Real-Time Client Connection & Broadcast Toast Notifications -->
+      <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
     </div>
   </main>

@@ -3,50 +3,137 @@
    ========================================================================== */
 
 const WEAPON_SVGS = {
+  // AK-47: Wooden stock, stamped receiver, curved 30-rd banana mag, handguard vents, gas tube, cleaning rod & slant brake
   ak47: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M16 44L58 38L64 26H152L166 22H228L244 30H296V35H258L250 40H218L206 44H170L182 74L164 78L148 46H104L92 68H76L82 45H58L24 64L12 58L16 44Z" fill="currentColor" opacity="0.92"/>
-    <path d="M72 31H146V37H72V31ZM172 27H222V33H172V27Z" fill="#080c13"/>
-    <rect x="278" y="25" width="6" height="10" fill="currentColor"/>
+    <path d="M10 43L14 38L66 34L72 25H158L166 28H222L236 29L244 35H280L285 20H291L293 35H302L308 32V40L292 40V43H242L236 45H222L218 47H170L166 46H156L164 60L178 78L161 83L145 63L136 46H114L108 55H94L91 46H87L75 70H58L68 45L56 46L20 62L10 57V43Z" fill="currentColor" opacity="0.95"/>
+    <path d="M78 29H150V34H78V29ZM172 32H216V36H172V32ZM172 39H214V43H172V39ZM95 46H106L103 52H95V46Z" fill="#080c13"/>
+    <rect x="242" y="41" width="46" height="2" fill="currentColor" opacity="0.75"/>
   </svg>`,
+  // M4A1-S: Crane collapsible stock, carry handle receiver, straight 20-rd STANAG mag, carbine handguard, A2 sight & long suppressor
   m4a1s: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 36H48L56 30H94L102 20H154L162 28H232V32H308V41H232V44H166L174 74L156 76L146 46H110L98 68H82L88 46H54L46 58H12V36Z" fill="currentColor" opacity="0.92"/>
-    <rect x="242" y="30" width="66" height="13" rx="2" fill="currentColor"/>
-    <path d="M106 24H148V30H106V24Z" fill="#080c13"/>
+    <path d="M8 33L14 29H54L60 33H74L80 26L92 18H146L154 26H206L213 17H220L223 32H234V28H312V40H234V37H222V42H206L202 45H154L148 46L152 75L133 77L127 46H112L106 55H92L89 46H85L74 69H58L67 45H56L46 58L12 52L8 46V33Z" fill="currentColor" opacity="0.95"/>
+    <path d="M22 36H46L42 46H22V36ZM96 22H140V27H96V22ZM160 31H198V35H160V31ZM160 38H198V41H160V38ZM93 46H104L101 52H93V46Z" fill="#080c13"/>
+    <path d="M244 28V40M262 28V40M296 28V40" stroke="#080c13" stroke-width="1.5"/>
   </svg>`,
+  // M4A4: Crane stock, flat-top receiver with rear sight, curved 30-rd STANAG mag, quad-rail RIS handguard, A2 front sight & flash hider
   m4a4: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18 34H58L66 28H168L176 31H244V34H294V40H244V44H172L180 73L162 76L150 46H112L100 68H84L90 46H60L50 60H18V34Z" fill="currentColor" opacity="0.92"/>
-    <path d="M96 32H160V38H96V32Z" fill="#080c13"/>
+    <path d="M14 33L20 29H62L68 33H82L86 22H98L102 26H160L164 24H226L234 17H241L244 32H284V30H300V39H284V37H244V42H228L224 46H162L156 47L166 77L147 80L135 47H118L112 56H98L95 47H91L80 70H64L73 46H62L52 59L18 53L14 46V33Z" fill="currentColor" opacity="0.95"/>
+    <path d="M28 36H52L48 46H28V36ZM90 30H154V35H90V30ZM170 30H218V34H170V30ZM170 38H218V42H170V38ZM99 47H110L107 53H99V47Z" fill="#080c13"/>
   </svg>`,
+  // AWP: Arctic Warfare thumbhole chassis stock, dual-turret sniper scope on rings, box mag, folded bipod, fluted barrel & muzzle brake
   awp: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 38H56L68 32H214V34H312V40H214V44H152L144 66H126L130 46H98L88 64H72L78 46H54L44 58H8V38Z" fill="currentColor" opacity="0.95"/>
-    <path d="M88 18H196L188 26H96L88 18Z" fill="currentColor"/>
-    <rect x="112" y="25" width="8" height="8" fill="currentColor"/>
-    <rect x="164" y="25" width="8" height="8" fill="currentColor"/>
+    <path d="M6 34L14 31H48L56 28H86L92 31H104V24H82V14H132L136 11H146L150 14H206V25H168V31H224V33H298V30H314V41H298V38H224V43H212L216 49H186L182 45H158L154 65H128L130 46H112L106 55H92L88 46H82L74 62H44L38 52H18L12 58H6V34Z" fill="currentColor" opacity="0.96"/>
+    <path d="M48 39H74L68 53H50L44 45L48 39ZM114 24H156V31H114V24ZM94 46H104L101 52H94V46Z" fill="#080c13"/>
   </svg>`,
-  mp9: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M58 34H96V26H208L218 32H256V40H218V46H184V78H168V46H136L124 68H106L114 44H68V54H58V34Z" fill="currentColor" opacity="0.92"/>
+  // SSG 08: Steyr tactical scout stock, medium optic scope, slim forend & long free-float barrel
+  ssg08: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 36L20 31H64L74 34H94V25H84V16H126L130 13H140L144 16H186V25H160V33H226V34H308V39H226V43H164L154 58H132L134 45H112L106 54H92L88 45L78 64H64L72 45H54L46 54H16L12 48V36Z" fill="currentColor" opacity="0.95"/>
+    <path d="M104 25H148V33H104V25ZM94 45H104L101 51H94V45Z" fill="#080c13"/>
   </svg>`,
-  mac10: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M84 26H196V48H154L146 78H126L132 48H94V60H84V26ZM196 34H232V41H196V34Z" fill="currentColor" opacity="0.92"/>
-  </svg>`,
+  // Galil AR: Tubular dual-strut folding stock, curved 35-rd magazine, handguard, hooded front sight & flash hider
   galil: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18 36H62L74 28H222L236 33H292V39H236L222 44H170L180 74L162 76L148 46H106L94 68H78L84 46H58L22 54V36Z" fill="currentColor" opacity="0.92"/>
+    <path d="M12 34H74L80 26H164L170 29H228L238 20H244L246 33H284V31H298V39H284V38H244L238 43H226L222 46H166L158 46L170 78L152 82L138 46H116L110 55H96L93 46H88L76 70H60L70 45H18L12 52V34Z" fill="currentColor" opacity="0.94"/>
+    <path d="M22 38H68V42H22V38ZM86 30H156V35H86V30ZM174 33H218V39H174V33Z" fill="#080c13"/>
   </svg>`,
+  // FAMAS: French bullpup with iconic full-length carry handle arch, rear magazine behind grip & rifle grenade barrel ring
   famas: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M28 32L48 18H188L204 32H268V40H204V48H146L136 68H118L124 48H82L90 76H72L62 48H28V32ZM66 26H172V33H66V26Z" fill="currentColor" opacity="0.92"/>
+    <path d="M22 30L34 28H54L64 16H198L208 28H222V32H264V30H278V39H264V37H222V45H204L198 48H136L130 58H114L112 48H106L96 70H80L88 48H72L66 78H48L52 48H30L22 54V30Z" fill="currentColor" opacity="0.94"/>
+    <path d="M72 22H188L192 29H68L72 22ZM116 48H126L124 54H116V48Z" fill="#080c13"/>
   </svg>`,
+  // AUG: Steyr bullpup stock, rear magazine, integrated angled optic scope, forward vertical grip & tulip flash hider
+  aug: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 32H88L98 16H184L180 24H166L172 30H218V33H276V39H218V44H182L178 72H164L166 45H132L126 56H110L106 46L96 70H80L88 48H68L60 80H42L48 48H24L20 54V32Z" fill="currentColor" opacity="0.94"/>
+    <path d="M106 21H158L162 29H102L106 21Z" fill="#080c13"/>
+  </svg>`,
+  // SG 553: SIG rifle with ACOG combat optic, curved 30-rd magazine, ribbed handguard & skeleton stock
+  sg553: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 34H76L82 26H104V16H158V26H168L174 29H232L238 22H244L246 33H282V31H296V39H282V38H244L238 43H166L158 46L168 78L150 81L138 46H116L110 55H96L92 46L80 69H64L74 45H22L14 52V34Z" fill="currentColor" opacity="0.94"/>
+    <path d="M26 38H68L64 42H26V38ZM174 33H224V38H174V33Z" fill="#080c13"/>
+  </svg>`,
+  // MP9: B&T machine pistol with side-folding skeleton stock, integrated vertical foregrip & long protruding 30-rd stick mag
+  mp9: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M44 33H106L112 24H212L218 29H248V38H218V44H206L204 68H190L190 44H164L158 84H140L144 52H128L124 44H106L48 49L44 44V33Z" fill="currentColor" opacity="0.94"/>
+    <path d="M54 37H102L100 43L54 45V37ZM120 29H198V34H120V29ZM130 44H142V49H130V44Z" fill="#080c13"/>
+  </svg>`,
+  // MAC-10: Boxy stamped steel receiver, rear wire stock, grip-fed long vertical stick magazine & front strap
+  mac10: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M62 34H94V22H102V25H194V21H202V31H234V40H222V56H214V40H202V46H158L152 55H142L138 84H118L122 46H94V39H68V46H62V34Z" fill="currentColor" opacity="0.94"/>
+    <path d="M106 30H186V36H106V30ZM142 46H152L149 52H142V46Z" fill="#080c13"/>
+  </svg>`,
+  // MP7: H&K PDW with collapsible stock rods, flip-up sights, grip magazine & folding foregrip
+  mp7: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M46 34H94L98 22H214L218 31H242V39H218V44H204L202 68H188V44H160L152 80H132L138 46H94V39H54V46H46V34Z" fill="currentColor" opacity="0.94"/>
+    <path d="M108 28H202V34H108V28Z" fill="#080c13"/>
+  </svg>`,
+  // UMP-45: H&K SMG with skeleton stock, boxy receiver & forward-angled straight 25-rd magazine
+  ump45: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 33H88L94 24H214L222 30H258V38H222V44H170L180 82L162 84L150 45H124L118 54H104L94 70H78L88 45H28L24 52V33Z" fill="currentColor" opacity="0.94"/>
+    <path d="M34 37H82L78 42H34V37ZM104 29H204V35H104V29Z" fill="#080c13"/>
+  </svg>`,
+  // P90: FN ergonomic bullpup monobody with dual thumbholes, top 50-rd horizontal mag & elevated ring sight
+  p90: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M38 30H64V22H172L178 14H220L224 26H236V32H254V39H236V58L222 64H194L188 52H164L156 68H132L136 50H94L88 66H38V30Z" fill="currentColor" opacity="0.95"/>
+    <path d="M56 40H84L80 54H56V40ZM102 38H132L128 50H102V38ZM168 38H190L186 48H168V38Z" fill="#080c13"/>
+  </svg>`,
+  // XM1014 / Nova: Tactical combat shotgun with full stock, long barrel + under-barrel mag tube & ribbed pump forend
+  xm1014: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 42L56 36L74 26H162L168 28H304V33H286V36H298V41H236L230 46H166L160 42H112L106 52H92L80 70H64L74 46L56 48L18 62L10 56L12 42Z" fill="currentColor" opacity="0.94"/>
+    <path d="M84 30H154V35H84V30ZM172 36H226V42H172V36Z" fill="#080c13"/>
+  </svg>`,
+  nova: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 42L58 36L76 27H158L164 29H306V34H284V37H296V41H234L228 47H168L162 41H110L104 50H90L72 50L20 62L10 56L12 42Z" fill="currentColor" opacity="0.94"/>
+    <path d="M174 37H224V43H174V37Z" fill="#080c13"/>
+  </svg>`,
+  // Desert Eagle: Heavy triangular .50 AE barrel/slide with flutes, beaver-tail frame, hammer & thick grip
   deagle: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M92 24H228L234 38H220L214 44H152L138 74H110L122 44H92V24Z" fill="currentColor" opacity="0.92"/>
-    <path d="M138 30H212V35H138V30Z" fill="#080c13"/>
+    <path d="M84 26L92 20H98L102 22H232L238 26V41H222L216 45H158L150 56H126L114 78H84L80 74L96 46L82 43L90 36L84 26Z" fill="currentColor" opacity="0.95"/>
+    <path d="M138 27H216V33H138V27ZM126 45H146L142 52H124L126 45Z" fill="#080c13"/>
   </svg>`,
+  // USP-S: Squared H&K tactical slide, rail frame, flared mag base & attached cylindrical suppressor
   usps: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M76 28H188V31H258V42H188V45H138L126 72H102L112 45H76V28Z" fill="currentColor" opacity="0.92"/>
+    <path d="M66 26L74 22H176V27H268V39H176V44H138L132 54H112L102 76H74L70 72L84 44L72 41V26H66Z" fill="currentColor" opacity="0.95"/>
+    <path d="M84 27H164V32H84V27ZM112 44H130L126 50H110L112 44Z" fill="#080c13"/>
+    <path d="M192 27V39M252 27V39" stroke="#080c13" stroke-width="1.5"/>
   </svg>`,
+  // Glock-18: Blocky flat-top Austrian slide with rear serrations, squared trigger guard & angled polymer grip
   glock: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M98 28H210V42H150L138 72H114L124 42H98V28Z" fill="currentColor" opacity="0.92"/>
+    <path d="M88 23H212V40H204L200 44H152L148 55H124L112 78H84L98 45L86 42V23H88Z" fill="currentColor" opacity="0.95"/>
+    <path d="M96 27H116V35H96V27ZM126 44H144V51H124L126 44Z" fill="#080c13"/>
   </svg>`,
+  // P250 / P2000 / Five-SeveN / Tec-9 / CZ75 / R8 Revolver / Zeus
+  p250: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M90 24L98 21H204L208 26V41H198L192 45H148L142 55H122L110 76H84L96 45L84 41L90 24Z" fill="currentColor" opacity="0.95"/>
+    <path d="M104 27H192V32H104V27ZM122 45H140L136 51H120L122 45Z" fill="#080c13"/>
+  </svg>`,
+  p2000: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M88 24L96 21H206V40H196L190 45H148L142 55H122L110 76H84L96 45L84 41L88 24Z" fill="currentColor" opacity="0.95"/>
+    <path d="M102 27H192V32H102V27ZM122 45H140L136 51H120L122 45Z" fill="#080c13"/>
+  </svg>`,
+  fiveseven: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M86 25L96 21H214L218 27V41H206L200 45H152L146 56H124L112 78H84L96 46L82 42L86 25Z" fill="currentColor" opacity="0.95"/>
+    <path d="M104 27H202V31H104V27ZM124 45H142L138 52H122L124 45Z" fill="#080c13"/>
+  </svg>`,
+  tec9: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M76 24H224V38H202V44H178L174 82H154L158 44H136L130 54H112L102 76H78L90 44H76V24Z" fill="currentColor" opacity="0.95"/>
+    <path d="M140 28H214V33H140V28ZM114 44H130L126 50H112L114 44Z" fill="#080c13"/>
+  </svg>`,
+  cz75: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M82 25L92 21H212V38H196L184 74H166L176 44H146L140 54H120L108 76H82L94 45L80 41L82 25Z" fill="currentColor" opacity="0.95"/>
+    <path d="M100 27H196V32H100V27ZM120 44H138L134 50H118L120 44Z" fill="#080c13"/>
+  </svg>`,
+  revolver: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M78 28L92 20H238L242 25V40H168L162 46H146L140 56H118L104 78H78L92 48L76 42L78 28Z" fill="currentColor" opacity="0.95"/>
+    <path d="M118 27H156V41H118V27ZM170 26H228V31H170V26ZM120 46H138L134 52H118L120 46Z" fill="#080c13"/>
+  </svg>`,
+  zeus: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M92 24H206L214 28V44H198L192 48H146L140 56H122L110 76H84L96 48L86 42L92 24Z" fill="currentColor" opacity="0.95"/>
+    <path d="M136 30L158 26L150 35H168L142 42L148 34H136V30Z" fill="#080c13"/>
+  </svg>`,
+  // M9 Bayonet / Tactical Combat Knife: Pommel ring, contoured grip, crossguard, fuller blood groove, clip-point blade & spine serrations
   knife: `<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M58 42H128V32L136 32V58H128V48H58V42ZM136 36H246L272 46L236 52H136V36Z" fill="currentColor" opacity="0.92"/>
+    <path d="M36 45C36 38.9 40.9 34 47 34C51.2 34 54.8 36.4 56.6 39.8H122V26H132V34H146L150 30L154 34L158 30L162 34L166 30L170 34H244L284 44L254 55C236 58 210 58 184 56H132V64H122V51H56.6C54.8 54.6 51.2 57 47 57C40.9 57 36 52.1 36 45Z" fill="currentColor" opacity="0.95"/>
+    <circle cx="47" cy="45.5" r="5.5" fill="#080c13"/>
+    <path d="M142 41H234V45H142V41ZM68 42H114V48H68V42Z" fill="#080c13"/>
   </svg>`
 };
 
@@ -72,6 +159,10 @@ const UTILITY_SVGS = {
   defuseKit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M6 3l6 7 6-7M8 21l4-9 4 9M5 12h14"/>
   </svg>`,
+  rescueKit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="6" width="18" height="14" rx="2" fill="currentColor" fill-opacity="0.22"/>
+    <path d="M9 6V4h6v2M12 10v6M9 13h6"/>
+  </svg>`,
   c4: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <rect x="3" y="6" width="18" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
     <path d="M7 10h4v4H7zM15 10h2M15 14h2"/>
@@ -96,18 +187,46 @@ function getWeaponKillfeedSvg(weaponNameOrId) {
   const raw = String(weaponNameOrId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   if (!raw) return WEAPON_SVGS.ak47;
   if (WEAPON_SVGS[raw]) return WEAPON_SVGS[raw];
-  if (raw.includes('m4a1')) return WEAPON_SVGS.m4a1s;
+  if (raw.includes('m4a1s') || raw.includes('silencer')) return WEAPON_SVGS.m4a1s;
   if (raw.includes('m4a4') || raw.includes('m4')) return WEAPON_SVGS.m4a4;
-  if (raw.includes('awp') || raw.includes('ssg') || raw.includes('sniper')) return WEAPON_SVGS.awp;
-  if (raw.includes('deagle') || raw.includes('deserteagle') || raw.includes('revolver')) return WEAPON_SVGS.deagle;
-  if (raw.includes('usp') || raw.includes('p2000') || raw.includes('fiveseven') || raw.includes('cz')) return WEAPON_SVGS.usps;
-  if (raw.includes('glock') || raw.includes('p250') || raw.includes('tec9') || raw.includes('dual')) return WEAPON_SVGS.glock;
-  if (raw.includes('mp9') || raw.includes('mp7') || raw.includes('mp5') || raw.includes('ump') || raw.includes('p90')) return WEAPON_SVGS.mp9;
-  if (raw.includes('mac10') || raw.includes('bizon')) return WEAPON_SVGS.mac10;
+  if (raw.includes('ssg') || raw.includes('scout')) return WEAPON_SVGS.ssg08;
+  if (raw.includes('awp') || raw.includes('sniper') || raw.includes('g3sg1') || raw.includes('scar')) return WEAPON_SVGS.awp;
+  if (raw.includes('aug')) return WEAPON_SVGS.aug;
+  if (raw.includes('sg55') || raw.includes('krieg')) return WEAPON_SVGS.sg553;
   if (raw.includes('galil')) return WEAPON_SVGS.galil;
   if (raw.includes('famas')) return WEAPON_SVGS.famas;
+  if (raw.includes('p90')) return WEAPON_SVGS.p90;
+  if (raw.includes('ump')) return WEAPON_SVGS.ump45;
+  if (raw.includes('mp7') || raw.includes('mp5')) return WEAPON_SVGS.mp7;
+  if (raw.includes('mp9')) return WEAPON_SVGS.mp9;
+  if (raw.includes('mac10') || raw.includes('bizon')) return WEAPON_SVGS.mac10;
+  if (raw.includes('xm1014') || raw.includes('mag7') || raw.includes('sawed')) return WEAPON_SVGS.xm1014;
+  if (raw.includes('nova')) return WEAPON_SVGS.nova;
+  if (raw.includes('revolver') || raw.includes('r8')) return WEAPON_SVGS.revolver;
+  if (raw.includes('deagle') || raw.includes('deserteagle')) return WEAPON_SVGS.deagle;
+  if (raw.includes('usp')) return WEAPON_SVGS.usps;
+  if (raw.includes('p2000')) return WEAPON_SVGS.p2000;
+  if (raw.includes('p250')) return WEAPON_SVGS.p250;
+  if (raw.includes('fiveseven')) return WEAPON_SVGS.fiveseven;
+  if (raw.includes('tec9')) return WEAPON_SVGS.tec9;
+  if (raw.includes('cz75') || raw.includes('cz')) return WEAPON_SVGS.cz75;
+  if (raw.includes('glock') || raw.includes('dual')) return WEAPON_SVGS.glock;
+  if (raw.includes('zeus') || raw.includes('taser')) return WEAPON_SVGS.zeus;
   if (raw.includes('knife') || raw.includes('bayonet') || raw.includes('karambit')) return WEAPON_SVGS.knife;
   return WEAPON_SVGS.ak47;
+}
+
+function isHostageRescueMap(mapName = appState ? appState.mapName : '') {
+  const m = String(mapName || '').toLowerCase().trim();
+  return (
+    m.startsWith('cs_') ||
+    m.includes('office') ||
+    m.includes('italy') ||
+    m.includes('agency') ||
+    m.includes('assault') ||
+    m.includes('militia') ||
+    m.includes('insertion')
+  );
 }
 
 // 11 CT-Side & 11 T-Side Full-Bleed CS2 Lobby Card Backgrounds
@@ -184,12 +303,28 @@ const appState = {
   killfeed: [],
   killCelebrations: {},
   prevGsiKills: {},
+  prevGsiRoundKills: {},
+  prevGsiRoundHs: {},
+  prevGsiHealth: {},
+  gsiPlayerTrackers: {},
+  seenServerKillIds: new Set(),
   damageTrails: [100, 100, 100, 100, 100],
   displayRes: '1080p', // '1080p' | '1440p' | '5120x1440'
   viewMode: 'squad', // 'squad' | 'player'
   selectedPlayerIdx: 0, // 0..4
   lanIp: window.location.hostname || '127.0.0.1',
-  port: window.location.port || '3000'
+  port: window.location.port || '3000',
+  sseConnected: false,
+  selfClientId: null,
+  notifSoundEnabled: true,
+  unreadClientEvents: 0,
+  clients: {
+    gsiCount: 0,
+    displayCount: 1,
+    gsiClients: [],
+    displayClients: []
+  },
+  connectionLogs: []
 };
 
 function triggerPlayerKillFlash(slotIdx, details = {}) {
@@ -275,34 +410,83 @@ function createInitialSimSquad(side = 'CT', count = appState.targetSquadSize) {
   ];
 
   const safeCount = Math.max(1, Math.min(5, count || 5));
-  return loadouts.slice(0, safeCount).map((item, idx) => ({
-    id: `sim-human-${idx + 1}`,
-    slot: idx + 1,
-    name: appState.customCallsigns[idx].name,
-    role: appState.customCallsigns[idx].role,
-    team: side,
-    health: idx === 3 ? 68 : idx === 2 ? 84 : 100,
-    armor: idx === 3 ? 82 : 100,
-    helmet: true,
-    defuseKit: isCT,
-    hasC4: !isCT && idx === Math.min(2, safeCount - 1),
-    flashed: 0,
-    burning: 0,
-    reloading: false,
-    money: item.money,
-    equipValue: item.equipValue,
-    kills: item.kills,
-    deaths: item.deaths,
-    assists: item.assists,
-    adr: item.adr,
-    hsPercent: item.hsPercent,
-    roundKills: item.roundKills,
-    roundDamage: item.roundDamage,
-    primaryWeapon: { ...item.primary },
-    secondaryWeapon: { ...item.secondary },
-    activeWeapon: { ...item.primary },
-    grenades: [...item.grenades]
-  }));
+  const currRound = Math.max(1, appState.roundNumber || 18);
+  return loadouts.slice(0, safeCount).map((item, idx) => {
+    const hsKills = Math.round((item.kills * item.hsPercent) / 100);
+    const priorRounds = Math.max(1, currRound - 1);
+    const completedDamage = Math.max(0, item.adr * priorRounds);
+    const roundHistory = {};
+    for (let offset = -7; offset <= -1; offset++) {
+      const rNum = currRound + offset;
+      if (rNum >= 1) {
+        const val = Math.max(24, Math.min(420, Math.round(item.adr + ((rNum * 37 + idx * 53) % 140) - 55)));
+        const kills = Math.max(0, Math.min(5, Math.round(val / 105)));
+        roundHistory[rNum] = { rNum, val, kills };
+      }
+    }
+    roundHistory[currRound] = { rNum: currRound, val: item.roundDamage, kills: item.roundKills };
+
+    return {
+      id: `sim-human-${idx + 1}`,
+      slot: idx + 1,
+      name: appState.customCallsigns[idx].name,
+      role: appState.customCallsigns[idx].role,
+      team: side,
+      health: idx === 3 ? 68 : idx === 2 ? 84 : 100,
+      armor: idx === 3 ? 82 : 100,
+      helmet: true,
+      defuseKit: isCT,
+      hasC4: !isCT && idx === Math.min(2, safeCount - 1),
+      flashed: 0,
+      burning: 0,
+      reloading: false,
+      money: item.money,
+      equipValue: item.equipValue,
+      kills: item.kills,
+      deaths: item.deaths,
+      assists: item.assists,
+      hsKills,
+      completedDamage,
+      roundsObserved: currRound,
+      adr: item.adr,
+      hsPercent: item.hsPercent,
+      roundKills: item.roundKills,
+      roundDamage: item.roundDamage,
+      roundHistory,
+      primaryWeapon: { ...item.primary },
+      secondaryWeapon: { ...item.secondary },
+      activeWeapon: { ...item.primary },
+      grenades: [...item.grenades]
+    };
+  });
+}
+
+function syncPlayerCombatMetrics(p, roundNum = appState.roundNumber) {
+  if (!p) return;
+  const rNum = Math.max(1, Number(roundNum) || 1);
+  if (!p.roundHistory || typeof p.roundHistory !== 'object' || Array.isArray(p.roundHistory)) {
+    p.roundHistory = {};
+  }
+  p.roundDamage = Math.max(0, Math.min(1000, Math.round(Number(p.roundDamage) || 0)));
+  p.roundKills = Math.max(0, Math.round(Number(p.roundKills) || 0));
+  p.roundHistory[rNum] = {
+    rNum,
+    val: p.roundDamage,
+    kills: p.roundKills
+  };
+
+  const roundsCount = Math.max(1, Number(p.roundsObserved) || rNum);
+  const completedDmg = typeof p.completedDamage === 'number'
+    ? p.completedDamage
+    : Math.max(0, (Number(p.adr) || 100) * Math.max(0, roundsCount - 1));
+  const adrDenominator = (appState.roundPhase === 'freezetime' && roundsCount > 1 && p.roundDamage === 0)
+    ? Math.max(1, roundsCount - 1)
+    : roundsCount;
+  p.adr = Math.max(0, Math.round((completedDmg + p.roundDamage) / adrDenominator));
+
+  if (typeof p.hsKills === 'number' && p.kills > 0) {
+    p.hsPercent = Math.max(0, Math.min(100, Math.round((p.hsKills / Math.max(1, p.kills)) * 100)));
+  }
 }
 
 function createInitialBotSwarm() {
@@ -314,19 +498,25 @@ function createInitialBotSwarm() {
   }));
 }
 
-function pushKillfeedEvent(attacker, attackerType, weaponName, victim, victimType, isHs = false, extraTag = '') {
+function pushKillfeedEvent(attacker, attackerType, weaponName, victim, victimType, isHs = false, extraTag = '', meta = {}) {
   appState.killfeed.unshift({
     id: `${Date.now()}-${Math.random()}`,
+    timestamp: Date.now(),
+    round: appState.roundNumber || 1,
     attacker,
     attackerType,
+    attackerSlot: meta.attackerSlot || null,
+    attackerId: meta.attackerId || null,
     weaponName,
     victim,
     victimType,
+    victimSlot: meta.victimSlot || null,
+    victimId: meta.victimId || null,
     isHs,
     extraTag
   });
-  if (appState.killfeed.length > 8) {
-    appState.killfeed.length = 8;
+  if (appState.killfeed.length > 12) {
+    appState.killfeed.length = 12;
   }
 }
 
@@ -337,8 +527,10 @@ function initSimulationState() {
   appState.killfeed = [
     {
       id: 'kf-1',
+      round: appState.roundNumber,
       attacker: appState.customCallsigns[Math.min(1, appState.players.length - 1)].name,
       attackerType: 'human',
+      attackerSlot: Math.min(2, appState.players.length),
       weaponName: 'AWP',
       victim: 'BOT VLADIMIR',
       victimType: 'bot',
@@ -347,8 +539,10 @@ function initSimulationState() {
     },
     {
       id: 'kf-2',
+      round: appState.roundNumber,
       attacker: appState.customCallsigns[0].name,
       attackerType: 'human',
+      attackerSlot: 1,
       weaponName: appState.humanSide === 'CT' ? 'M4A1-S' : 'AK-47',
       victim: 'BOT IGOR',
       victimType: 'bot',
@@ -357,8 +551,10 @@ function initSimulationState() {
     },
     {
       id: 'kf-3',
+      round: appState.roundNumber,
       attacker: appState.customCallsigns[Math.min(2, appState.players.length - 1)].name,
       attackerType: 'human',
+      attackerSlot: Math.min(3, appState.players.length),
       weaponName: appState.humanSide === 'CT' ? 'M4A4' : 'AK-47',
       victim: 'BOT DMITRI',
       victimType: 'bot',
@@ -367,8 +563,10 @@ function initSimulationState() {
     },
     {
       id: 'kf-4',
+      round: appState.roundNumber,
       attacker: appState.customCallsigns[Math.min(4, appState.players.length - 1)].name,
       attackerType: 'human',
+      attackerSlot: Math.min(5, appState.players.length),
       weaponName: 'Desert Eagle',
       victim: 'BOT BORIS',
       victimType: 'bot',
@@ -551,12 +749,16 @@ function renderTopHeader() {
   const humansAlive = appState.players.filter(p => p.health > 0).length;
   document.getElementById('human-alive-text').textContent = `${humansAlive} / ${squadCount}`;
   const humanPipsEl = document.getElementById('human-alive-pips');
-  humanPipsEl.innerHTML = appState.players.map(p => {
-    const aliveClass = p.health <= 0 ? 'dead' : p.health <= 25 ? 'alive low-hp' : 'alive';
-    return `<div class="unit-pip ${aliveClass}" title="${p.name}: ${p.health} HP">
-      <div class="unit-pip-fill" style="height:${Math.max(0, p.health)}%"></div>
-    </div>`;
-  }).join('');
+  const humanPipsSig = appState.players.map(p => `${p.name}:${p.health}`).join('|');
+  if (humanPipsEl.dataset.sig !== humanPipsSig) {
+    humanPipsEl.dataset.sig = humanPipsSig;
+    humanPipsEl.innerHTML = appState.players.map(p => {
+      const aliveClass = p.health <= 0 ? 'dead' : p.health <= 25 ? 'alive low-hp' : 'alive';
+      return `<div class="unit-pip ${aliveClass}" title="${p.name}: ${p.health} HP">
+        <div class="unit-pip-fill" style="height:${Math.max(0, p.health)}%"></div>
+      </div>`;
+    }).join('');
+  }
 
   // Bot 10-unit swarm matrix
   const botsAlive = appState.bots.filter(b => b.health > 0).length;
@@ -567,12 +769,16 @@ function renderTopHeader() {
     botsAlive >= 7 ? 'SWARM SURGE' : botsAlive >= 4 ? 'CONTESTED' : botsAlive > 0 ? 'DEPLETED' : 'WIPED';
 
   const botPipsEl = document.getElementById('bot-alive-pips');
-  botPipsEl.innerHTML = appState.bots.map(b => {
-    const aliveClass = b.health <= 0 ? 'dead' : b.health <= 30 ? 'alive low-hp' : 'alive';
-    return `<div class="unit-pip ${aliveClass}" title="${b.name}: ${b.health} HP">
-      <div class="unit-pip-fill" style="height:${Math.max(0, b.health)}%"></div>
-    </div>`;
-  }).join('');
+  const botPipsSig = appState.bots.map(b => `${b.name}:${b.health}`).join('|');
+  if (botPipsEl.dataset.sig !== botPipsSig) {
+    botPipsEl.dataset.sig = botPipsSig;
+    botPipsEl.innerHTML = appState.bots.map(b => {
+      const aliveClass = b.health <= 0 ? 'dead' : b.health <= 30 ? 'alive low-hp' : 'alive';
+      return `<div class="unit-pip ${aliveClass}" title="${b.name}: ${b.health} HP">
+        <div class="unit-pip-fill" style="height:${Math.max(0, b.health)}%"></div>
+      </div>`;
+    }).join('');
+  }
 
   // Center Clock & Bomb State
   const clockModule = document.getElementById('center-clock-module');
@@ -580,6 +786,7 @@ function renderTopHeader() {
   const timerDigits = document.getElementById('round-timer-digits');
   const trackFill = document.getElementById('timer-track-fill');
   const defuseHint = document.getElementById('defuse-hint-label');
+  const hostageMap = isHostageRescueMap(appState.mapName);
 
   document.getElementById('map-badge').textContent = `${appState.mapName.toUpperCase()} // ${squadCount}v${botCount}`;
   document.getElementById('round-number-badge').textContent = `ROUND ${appState.roundNumber} / 24`;
@@ -607,7 +814,7 @@ function renderTopHeader() {
     trackFill.style.width = `${pct}%`;
     defuseHint.textContent = humansAlive === 1 && botsAlive >= 2
       ? `CLUTCH ALERT: 1 vs ${botsAlive} BOTS`
-      : 'MR12 STADIUM FEED';
+      : hostageMap ? 'HOSTAGE RESCUE // MR12 FEED' : 'MR12 STADIUM FEED';
   }
 
   const calloutEl = document.getElementById('callout-alert-text');
@@ -616,13 +823,24 @@ function renderTopHeader() {
 }
 
 function renderKillfeed() {
-  const sig = appState.killfeed.map(k => k.id).join('|');
+  const sig = appState.killfeed.map(k => `${k.id}:${k.attacker}:${k.victim}:${k.weaponName}:${k.isHs}`).join('|');
   if (sig === appState.lastKillfeedSig) return;
   appState.lastKillfeedSig = sig;
 
   const container = document.getElementById('killfeed-items');
-  container.innerHTML = appState.killfeed.map(item => `
-    <div class="kill-pill">
+  if (!container) return;
+
+  if (appState.killfeed.length === 0) {
+    container.innerHTML = `
+      <div class="kill-pill kill-pill-empty">
+        <span style="color:var(--text-muted); font-family:var(--font-mono); font-size:11px;">AWAITING FIRST ENGAGEMENT...</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = appState.killfeed.map((item, idx) => `
+    <div class="kill-pill ${idx === 0 ? 'kill-pill-latest' : ''}">
       <span class="kill-attacker ${item.attackerType}">${item.attacker}</span>
       <span class="kill-weapon-icon" title="${item.weaponName}">${getWeaponKillfeedSvg(item.weaponName)}</span>
       ${item.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
@@ -633,9 +851,22 @@ function renderKillfeed() {
 
 function renderPlayersStage() {
   const stageEl = document.getElementById('players-stage-grid');
+  if (!stageEl) return;
   const totalRoundBotKills = appState.players.reduce((sum, pl) => sum + Math.max(0, Number(pl.roundKills) || 0), 0);
+  const hostageMap = isHostageRescueMap(appState.mapName);
 
-  stageEl.innerHTML = appState.players.map((p, idx) => {
+  // Ensure exact number of persistent <article> card elements so animations & transitions never restart or pixel-shift
+  while (stageEl.children.length > appState.players.length) {
+    stageEl.removeChild(stageEl.lastElementChild);
+  }
+  while (stageEl.children.length < appState.players.length) {
+    const article = document.createElement('article');
+    article.className = 'player-stadium-card';
+    stageEl.appendChild(article);
+  }
+
+  appState.players.forEach((p, idx) => {
+    const cardEl = stageEl.children[idx];
     const isAlive = p.health > 0;
     const isLowHp = isAlive && p.health <= 25;
     const isMidHp = isAlive && p.health > 25 && p.health <= 55;
@@ -653,11 +884,16 @@ function renderPlayersStage() {
       clipMax: 0,
       reserve: 0
     };
-    const weaponSvg = WEAPON_SVGS[weapon.id] || WEAPON_SVGS.ak47;
+    const weaponSvg = getWeaponKillfeedSvg(weapon.id || weapon.name);
     const clipPct = weapon.clipMax > 0 ? Math.max(0, Math.min(100, (weapon.clip / weapon.clipMax) * 100)) : 100;
     const isLowAmmo = weapon.clipMax > 0 && weapon.clip <= Math.ceil(weapon.clipMax * 0.28);
 
     const sidearm = p.secondaryWeapon || { name: 'USP-S', clip: 12, reserve: 24 };
+    const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
+    const isCtOnHostage = currentSide === 'CT' && hostageMap;
+    const kitPillLabel = isCtOnHostage ? 'RESCUE KIT' : 'DEFUSE KIT';
+    const kitSlotLabel = isCtOnHostage ? 'RESCUE KIT' : 'DEF KIT';
+    const kitIconSvg = isCtOnHostage ? UTILITY_SVGS.rescueKit : UTILITY_SVGS.defuseKit;
 
     // Build 4 grenade slots
     const grenadeSlotsHtml = [0, 1, 2, 3].map(slotIdx => {
@@ -683,8 +919,8 @@ function renderPlayersStage() {
       </div>`;
     } else if (p.defuseKit) {
       gearSlotHtml = `<div class="gear-kit-slot has-kit">
-        ${UTILITY_SVGS.defuseKit}
-        <span class="grenade-slot-label">DEF KIT</span>
+        ${kitIconSvg}
+        <span class="grenade-slot-label">${kitSlotLabel}</span>
       </div>`;
     }
 
@@ -696,16 +932,20 @@ function renderPlayersStage() {
       if (isFlashed) statusPills.push(`<span class="status-pill flashed">FLASHED ${Math.round((p.flashed / 255) * 100)}%</span>`);
       if (isBurning) statusPills.push(`<span class="status-pill burning">BURNING</span>`);
       if (p.hasC4) statusPills.push(`<span class="status-pill c4-carrier">C4 CARRIER</span>`);
-      else if (p.defuseKit) statusPills.push(`<span class="status-pill defuse-kit">DEFUSE KIT</span>`);
+      else if (p.defuseKit) statusPills.push(`<span class="status-pill defuse-kit">${kitPillLabel}</span>`);
       if (statusPills.length === 0) statusPills.push(`<span class="status-pill alive-ready">COMBAT READY</span>`);
     }
 
     const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
     const playerRoundKills = Math.max(0, Number(p.roundKills) || 0);
+    const playerRoundDmg = Math.max(0, Math.round(Number(p.roundDamage) || 0));
     const roundKillSharePct = totalRoundBotKills > 0
       ? Math.min(100, Math.round((playerRoundKills / totalRoundBotKills) * 100))
       : 0;
-    const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
+    const roundDmgProgressPct = Math.max(
+      roundKillSharePct,
+      Math.min(100, Math.round((playerRoundDmg / 400) * 100))
+    );
     const sideClass = currentSide === 'T' ? 'side-t' : 'side-ct';
     const slotCfg = appState.customCallsigns[idx] || DEFAULT_CALLSIGNS[idx] || DEFAULT_CALLSIGNS[0];
     const activeBgId = currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1);
@@ -714,7 +954,7 @@ function renderPlayersStage() {
     const now = Date.now();
     const celeb = appState.killCelebrations[idx];
     const isKillFlash = Boolean(celeb && isAlive && now < celeb.expiresAt);
-    const killAnimDelayMs = isKillFlash ? Math.max(0, now - celeb.startedAt) : 0;
+    const celebId = isKillFlash ? String(celeb.startedAt) : '';
 
     const killBannerHtml = isKillFlash ? `
       <div class="kill-flash-banner" aria-live="polite">
@@ -731,134 +971,156 @@ function renderPlayersStage() {
       </div>
     ` : '';
 
-    return `
-      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''} ${isKillFlash ? 'is-kill-flash' : ''}" id="player-card-${idx + 1}" style="--card-model-bg: url('${bgUrl}'); --kill-anim-delay: -${killAnimDelayMs}ms;">
-        ${killBannerHtml}
-        
-        <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
-        <div class="card-zone-identity" data-cycle-bg="${idx}" title="Click portrait background to cycle ${currentSide} Lobby Skin (${activeBgId}/11)">
-          <div class="operator-hero-row">
-            <div class="operator-name-block">
-              <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
-              <div class="operator-sub-status">
-                ${statusPills.join('')}
-                <a href="/player.html?slot=${idx + 1}" class="player-inspect-pill" data-open-player="${idx}" title="Open Individual Player Deep-Dive View (/player.html?slot=${idx + 1})">INSPECT &#8599;</a>
-              </div>
+    const desiredClassName = `player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''} ${isKillFlash ? 'is-kill-flash' : ''}`.replace(/\s+/g, ' ').trim();
+    if (cardEl.className !== desiredClassName) {
+      cardEl.className = desiredClassName;
+    }
+    cardEl.id = `player-card-${idx + 1}`;
+    if (cardEl.dataset.bgUrl !== bgUrl) {
+      cardEl.dataset.bgUrl = bgUrl;
+      cardEl.style.setProperty('--card-model-bg', `url('${bgUrl}')`);
+    }
+
+    const innerHtml = `
+      ${killBannerHtml}
+      
+      <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
+      <div class="card-zone-identity" data-cycle-bg="${idx}" title="Click portrait background to cycle ${currentSide} Lobby Skin (${activeBgId}/11)">
+        <div class="operator-hero-row">
+          <div class="operator-name-block">
+            <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
+            <div class="operator-sub-status">
+              ${statusPills.join('')}
+              <a href="/player.html?slot=${idx + 1}" class="player-inspect-pill" data-open-player="${idx}" title="Open Individual Player Deep-Dive View (/player.html?slot=${idx + 1})">INSPECT &#8599;</a>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- ZONE 2: GIANT VITALS (HEALTH & ARMOR) -->
-        <div class="card-zone-vitals">
-          <div class="vitals-numbers-row">
-            <div class="hp-primary-cluster">
-              <span class="hp-giant-value ${hpStateClass}">${p.health}</span>
-              <span class="hp-unit-label">HP</span>
-            </div>
-
-            <div class="armor-cluster ${p.armor <= 0 ? 'no-armor' : ''}">
-              <div class="armor-icon-wrap">
-                ${p.helmet ? UTILITY_SVGS.helmetArmor : UTILITY_SVGS.kevlarOnly}
-              </div>
-              <span class="armor-value">${p.armor}</span>
-              <span class="armor-type-sub">${p.helmet ? 'HELM+KEV' : 'KEVLAR'}</span>
-            </div>
+      <!-- ZONE 2: GIANT VITALS (HEALTH & ARMOR) -->
+      <div class="card-zone-vitals">
+        <div class="vitals-numbers-row">
+          <div class="hp-primary-cluster">
+            <span class="hp-giant-value ${hpStateClass}">${p.health}</span>
+            <span class="hp-unit-label">HP</span>
           </div>
 
-          <div class="hp-bar-outer">
-            <div class="hp-bar-damage-trail" style="width:${trailHp}%"></div>
-            <div class="hp-bar-current ${hpStateClass}" style="width:${p.health}%"></div>
-            <div class="hp-bar-segments-overlay"></div>
+          <div class="armor-cluster ${p.armor <= 0 ? 'no-armor' : ''}">
+            <div class="armor-icon-wrap">
+              ${p.helmet ? UTILITY_SVGS.helmetArmor : UTILITY_SVGS.kevlarOnly}
+            </div>
+            <span class="armor-value">${p.armor}</span>
+            <span class="armor-type-sub">${p.helmet ? 'HELM+KEV' : 'KEVLAR'}</span>
           </div>
         </div>
 
-        <!-- ZONE 3: PRIMARY WEAPON SILHOUETTE & AMMO TELEMETRY -->
-        <div class="card-zone-weapons">
-          <div class="weapon-header-row">
-            <div class="weapon-name-group">
-              <span class="weapon-title">${weapon.name}</span>
-              <span class="weapon-skin-sub">${weapon.skin || 'FACTORY ISSUE'}</span>
-            </div>
-            <span class="weapon-state-tag ${p.reloading ? 'reloading' : ''}">
-              ${p.reloading ? 'RELOADING' : isLowAmmo ? 'LOW AMMO' : 'EQUIPPED'}
-            </span>
+        <div class="hp-bar-outer">
+          <div class="hp-bar-damage-trail" style="width:${trailHp}%"></div>
+          <div class="hp-bar-current ${hpStateClass}" style="width:${p.health}%"></div>
+          <div class="hp-bar-segments-overlay"></div>
+        </div>
+      </div>
+
+      <!-- ZONE 3: PRIMARY WEAPON SILHOUETTE & AMMO TELEMETRY -->
+      <div class="card-zone-weapons">
+        <div class="weapon-header-row">
+          <div class="weapon-name-group">
+            <span class="weapon-title">${weapon.name}</span>
+            <span class="weapon-skin-sub">${weapon.skin || 'FACTORY ISSUE'}</span>
+          </div>
+          <span class="weapon-state-tag ${p.reloading ? 'reloading' : ''}">
+            ${p.reloading ? 'RELOADING' : isLowAmmo ? 'LOW AMMO' : 'EQUIPPED'}
+          </span>
+        </div>
+
+        <div class="weapon-silhouette-stage">
+          ${weaponSvg}
+        </div>
+
+        <div class="ammo-telemetry-row">
+          <div class="ammo-counter-nums">
+            <span class="ammo-clip-big ${weapon.clip === 0 ? 'empty' : isLowAmmo ? 'low' : ''}">${weapon.clip}</span>
+            <span class="ammo-reserve-sub">/ ${weapon.reserve}</span>
           </div>
 
-          <div class="weapon-silhouette-stage">
-            ${weaponSvg}
-          </div>
-
-          <div class="ammo-telemetry-row">
-            <div class="ammo-counter-nums">
-              <span class="ammo-clip-big ${weapon.clip === 0 ? 'empty' : isLowAmmo ? 'low' : ''}">${weapon.clip}</span>
-              <span class="ammo-reserve-sub">/ ${weapon.reserve}</span>
+          <div class="ammo-bar-sidearm-col">
+            <div class="magazine-bullet-track">
+              <div class="magazine-bullet-fill ${isLowAmmo ? 'low' : ''}" style="width:${clipPct}%"></div>
             </div>
-
-            <div class="ammo-bar-sidearm-col">
-              <div class="magazine-bullet-track">
-                <div class="magazine-bullet-fill ${isLowAmmo ? 'low' : ''}" style="width:${clipPct}%"></div>
-              </div>
-              <div class="sidearm-mini-row">
-                <span>SIDEARM: <strong class="sidearm-name">${sidearm.name}</strong></span>
-                <span>${sidearm.clip} / ${sidearm.reserve}</span>
-              </div>
+            <div class="sidearm-mini-row">
+              <span>SIDEARM: <strong class="sidearm-name">${sidearm.name}</strong></span>
+              <span>${sidearm.clip} / ${sidearm.reserve}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- ZONE 4: UTILITY BELT & ECONOMY -->
-        <div class="card-zone-utility">
-          <div class="utility-belt-row">
-            ${grenadeSlotsHtml}
-            ${gearSlotHtml}
+      <!-- ZONE 4: UTILITY BELT & ECONOMY -->
+      <div class="card-zone-utility">
+        <div class="utility-belt-row">
+          ${grenadeSlotsHtml}
+          ${gearSlotHtml}
+        </div>
+
+        <div class="economy-telemetry-row">
+          <div class="player-cash-block">
+            <span class="cash-label">BANK</span>
+            <span class="cash-amount">${formatMoney(p.money)}</span>
           </div>
+          <div class="equip-val-block">
+            LOADOUT VALUE <strong>${formatMoney(p.equipValue)}</strong>
+          </div>
+        </div>
+      </div>
 
-          <div class="economy-telemetry-row">
-            <div class="player-cash-block">
-              <span class="cash-label">BANK</span>
-              <span class="cash-amount">${formatMoney(p.money)}</span>
-            </div>
-            <div class="equip-val-block">
-              LOADOUT VALUE <strong>${formatMoney(p.equipValue)}</strong>
-            </div>
+      <!-- ZONE 5: PRESENTER MATCH STATS FOOTER -->
+      <div class="card-zone-stats">
+        <div class="stats-grid-4">
+          <div class="stat-cell highlight">
+            <span class="stat-cell-label">KILLS</span>
+            <span class="stat-cell-val">${p.kills}</span>
+          </div>
+          <div class="stat-cell">
+            <span class="stat-cell-label">DEATHS</span>
+            <span class="stat-cell-val">${p.deaths}</span>
+          </div>
+          <div class="stat-cell">
+            <span class="stat-cell-label">ASSISTS</span>
+            <span class="stat-cell-val">${p.assists}</span>
+          </div>
+          <div class="stat-cell">
+            <span class="stat-cell-label">ADR</span>
+            <span class="stat-cell-val">${p.adr}</span>
           </div>
         </div>
 
-        <!-- ZONE 5: PRESENTER MATCH STATS FOOTER -->
-        <div class="card-zone-stats">
-          <div class="stats-grid-4">
-            <div class="stat-cell highlight">
-              <span class="stat-cell-label">KILLS</span>
-              <span class="stat-cell-val">${p.kills}</span>
-            </div>
-            <div class="stat-cell">
-              <span class="stat-cell-label">DEATHS</span>
-              <span class="stat-cell-val">${p.deaths}</span>
-            </div>
-            <div class="stat-cell">
-              <span class="stat-cell-label">ASSISTS</span>
-              <span class="stat-cell-val">${p.assists}</span>
-            </div>
-            <div class="stat-cell">
-              <span class="stat-cell-label">ADR</span>
-              <span class="stat-cell-val">${p.adr}</span>
-            </div>
+        <div class="round-damage-footer">
+          <div class="round-dmg-meta">
+            <span>K/D <strong>${kdRatio}</strong> &bull; HS <strong>${p.hsPercent}%</strong></span>
+            <span>RND DMG <strong>${playerRoundDmg}</strong> &bull; KILLS <strong>${playerRoundKills}/${totalRoundBotKills}</strong></span>
           </div>
-
-          <div class="round-damage-footer">
-            <div class="round-dmg-meta">
-              <span>K/D <strong>${kdRatio}</strong> &bull; HS <strong>${p.hsPercent}%</strong></span>
-              <span>RND BOT KILLS <strong>${playerRoundKills}/${totalRoundBotKills} (${roundKillSharePct}%)</strong></span>
-            </div>
-            <div class="round-dmg-track" title="Percentage of Bot Kills This Round: ${playerRoundKills} of ${totalRoundBotKills} (${roundKillSharePct}%)">
-              <div class="round-dmg-fill" style="width:${roundKillSharePct}%"></div>
-            </div>
+          <div class="round-dmg-track" title="Round Output: ${playerRoundDmg} DMG | ${playerRoundKills} of ${totalRoundBotKills} Bot Kills (${roundKillSharePct}%)">
+            <div class="round-dmg-fill" style="width:${roundDmgProgressPct}%"></div>
           </div>
         </div>
-
-      </article>
+      </div>
     `;
-  }).join('');
+
+    // Only update card innerHTML when content actually changes; if kill flash is active with the same celebId, preserve the banner animation
+    const contentSig = `${celebId}|${p.name}|${p.health}|${trailHp}|${p.armor}|${p.helmet}|${p.flashed}|${p.burning}|${p.hasC4}|${p.defuseKit}|${isCtOnHostage}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${p.reloading}|${sidearm.name}|${sidearm.clip}|${sidearm.reserve}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${playerRoundDmg}|${playerRoundKills}|${totalRoundBotKills}|${activeBgId}`;
+    if (cardEl.dataset.contentSig !== contentSig) {
+      const hadSameCeleb = isKillFlash && cardEl.dataset.celebId === celebId;
+      if (hadSameCeleb) {
+        const animDelayMs = Math.max(0, now - celeb.startedAt);
+        cardEl.style.setProperty('--kill-anim-delay', `-${animDelayMs}ms`);
+      } else {
+        cardEl.style.setProperty('--kill-anim-delay', '0ms');
+      }
+      cardEl.dataset.celebId = celebId;
+      cardEl.dataset.contentSig = contentSig;
+      cardEl.innerHTML = innerHtml;
+    }
+  });
 }
 
 function renderUltrawideWing() {
@@ -992,9 +1254,9 @@ function renderPlayerDetailView() {
     clipMax: 30,
     reserve: 90
   };
-  const weaponSvg = WEAPON_SVGS[weapon.id] || WEAPON_SVGS.ak47;
+  const weaponSvg = getWeaponKillfeedSvg(weapon.id || weapon.name);
   const sidearm = p.secondaryWeapon || { id: 'deagle', name: 'Desert Eagle', skin: 'STANDARD', clip: 7, clipMax: 7, reserve: 35 };
-  const sidearmSvg = WEAPON_SVGS[sidearm.id] || WEAPON_SVGS.usps;
+  const sidearmSvg = getWeaponKillfeedSvg(sidearm.id || sidearm.name);
 
   const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
   const kpr = (p.kills / Math.max(1, appState.roundNumber)).toFixed(2);
@@ -1023,46 +1285,101 @@ function renderPlayerDetailView() {
     </div>`;
   }).join('');
 
+  const hostageMap = isHostageRescueMap(appState.mapName);
+  const isCtOnHostage = currentSide === 'CT' && hostageMap;
+  const kitPillLabel = isCtOnHostage ? 'RESCUE KIT' : 'DEFUSE KIT';
+  const kitSlotLabel = isCtOnHostage ? 'RESCUE KIT' : 'DEF KIT';
+  const kitIconSvg = isCtOnHostage ? UTILITY_SVGS.rescueKit : UTILITY_SVGS.defuseKit;
+
   const gearSlotHtml = p.hasC4
     ? `<div class="gear-kit-slot has-c4">${UTILITY_SVGS.c4}<span class="grenade-slot-label">C4 BOMB</span></div>`
     : p.defuseKit
-      ? `<div class="gear-kit-slot has-kit">${UTILITY_SVGS.defuseKit}<span class="grenade-slot-label">DEF KIT</span></div>`
+      ? `<div class="gear-kit-slot has-kit">${kitIconSvg}<span class="grenade-slot-label">${kitSlotLabel}</span></div>`
       : `<div class="gear-kit-slot"><span class="grenade-slot-label">NO KIT</span></div>`;
 
-  // Simulated/derived 8-round damage history bars for this operator
-  const baseDmg = p.adr || 110;
-  const roundHistory = [-7, -6, -5, -4, -3, -2, -1, 0].map(offset => {
-    const rNum = Math.max(1, appState.roundNumber + offset);
-    const val = offset === 0
-      ? p.roundDamage
-      : Math.max(24, Math.min(420, Math.round(baseDmg + ((rNum * 37 + safeIdx * 53) % 140) - 55)));
-    const pct = Math.max(8, Math.min(100, Math.round((val / 360) * 100)));
-    return { rNum, val, pct };
+  // Real-time 8-round damage history bars for this operator
+  const currRound = Math.max(1, Number(appState.roundNumber) || 1);
+  const startRound = currRound <= 8 ? 1 : currRound - 7;
+  const roundHistory = Array.from({ length: 8 }, (_, i) => {
+    const rNum = startRound + i;
+    const isCurrent = rNum === currRound;
+    const isFuture = rNum > currRound;
+    const histEntry = p.roundHistory && p.roundHistory[rNum];
+    let val = 0;
+    let kills = 0;
+    if (isCurrent) {
+      val = Math.max(0, Math.round(Number(p.roundDamage) || 0));
+      kills = Math.max(0, Math.round(Number(p.roundKills) || 0));
+    } else if (!isFuture && histEntry && typeof histEntry.val === 'number') {
+      val = Math.max(0, Math.round(histEntry.val));
+      kills = Math.max(0, Math.round(histEntry.kills || 0));
+    } else if (!isFuture && appState.mode === 'simulation') {
+      const baseDmg = p.adr || 110;
+      val = Math.max(24, Math.min(420, Math.round(baseDmg + ((rNum * 37 + safeIdx * 53) % 140) - 55)));
+      kills = Math.max(0, Math.min(5, Math.round(val / 105)));
+    }
+    const pct = isFuture ? 0 : (val === 0 ? 4 : Math.max(10, Math.min(100, Math.round((val / 380) * 100))));
+    return { rNum, val, kills, pct, isCurrent, isFuture };
   });
 
   const roundBarsHtml = roundHistory.map(item => `
-    <div class="pd-round-bar-col">
-      <span style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-primary);">${item.val}</span>
+    <div class="pd-round-bar-col ${item.isCurrent ? 'current' : ''} ${item.isFuture ? 'future' : ''}" title="${item.isFuture ? `Round ${item.rNum} (Upcoming)` : `Round ${item.rNum}: ${item.val} DMG (${item.kills} Kills)`}">
+      <span style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:${item.isCurrent ? 'var(--squad-accent)' : item.isFuture ? 'var(--text-muted)' : 'var(--text-primary)'};">${item.isFuture ? '--' : item.val}</span>
       <div class="pd-round-bar-track">
-        <div class="pd-round-bar-fill" style="height:${item.pct}%"></div>
+        <div class="pd-round-bar-fill" style="height:${item.pct}%; ${item.isCurrent ? 'filter: brightness(1.25); box-shadow: 0 0 12px var(--squad-glow);' : item.isFuture ? 'opacity: 0.15;' : ''}"></div>
       </div>
-      <span class="pd-round-bar-label">R${item.rNum}</span>
+      <span class="pd-round-bar-label" style="${item.isCurrent ? 'color:var(--squad-accent); font-weight:800;' : ''}">R${item.rNum}${!item.isFuture && item.kills > 0 ? ` &bull; ${item.kills}K` : ''}</span>
     </div>
   `).join('');
 
-  const personalKills = appState.killfeed.filter(k => k.attacker === p.name || k.victim === p.name).slice(0, 4);
-  const killLogHtml = (personalKills.length > 0 ? personalKills : appState.killfeed.slice(0, 4)).map(k => `
-    <div class="pd-kill-log-item">
-      <span style="display:inline-flex; align-items:center; gap:8px;">
-        <strong style="color:var(--squad-accent);">${k.attacker}</strong>
-        <span class="kill-weapon-icon" title="${k.weaponName}">${getWeaponKillfeedSvg(k.weaponName)}</span>
-        ${k.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
-      </span>
-      <span style="color:var(--bot-accent);">FRAGGED ${k.victim}</span>
-    </div>
-  `).join('');
+  const isPersonalEngagement = (k) => {
+    if (!k) return false;
+    if (k.attacker === p.name || k.victim === p.name) return true;
+    if (k.attackerSlot && k.attackerSlot === safeIdx + 1) return true;
+    if (k.victimSlot && k.victimSlot === safeIdx + 1) return true;
+    if (p.id && (k.attackerId === p.id || k.victimId === p.id)) return true;
+    return false;
+  };
+
+  // Combine latest squad killfeed with operator's personal engagements so the log updates live on every kill
+  const personalFeed = appState.killfeed.filter(isPersonalEngagement);
+  const combinedFeed = [];
+  const seenLogIds = new Set();
+  for (const k of [...appState.killfeed.slice(0, 2), ...personalFeed.slice(0, 3), ...appState.killfeed.slice(0, 4)]) {
+    if (k && !seenLogIds.has(k.id)) {
+      seenLogIds.add(k.id);
+      combinedFeed.push(k);
+    }
+  }
+  // Keep chronological order matching appState.killfeed
+  const orderedFeed = appState.killfeed.filter(k => seenLogIds.has(k.id)).slice(0, 4);
+
+  const killLogHtml = orderedFeed.length === 0
+    ? `<div class="pd-kill-log-item" style="justify-content:center; color:var(--text-muted);">AWAITING LIVE COMBAT ENGAGEMENTS...</div>`
+    : orderedFeed.map(k => {
+      const isPersonal = isPersonalEngagement(k);
+      const isAttackerHuman = k.attackerType !== 'bot';
+      const isVictimHuman = k.victimType === 'human';
+      const attackerColor = isAttackerHuman ? 'var(--squad-accent)' : 'var(--bot-accent)';
+      const victimColor = isVictimHuman ? 'var(--squad-accent)' : 'var(--bot-accent)';
+      const actionVerb = isAttackerHuman ? 'FRAGGED' : 'ELIMINATED';
+      return `
+        <div class="pd-kill-log-item ${isPersonal ? 'personal-engagement' : ''}" style="${isPersonal ? 'border-color: var(--squad-border); background: rgba(56, 189, 248, 0.08);' : ''}">
+          <span style="display:inline-flex; align-items:center; gap:8px;">
+            ${isPersonal ? `<span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(56, 189, 248, 0.2); color:var(--squad-accent); font-weight:800;">OP 0${safeIdx + 1}</span>` : ''}
+            <strong style="color:${attackerColor};">${k.attacker}</strong>
+            <span class="kill-weapon-icon" title="${k.weaponName}">${getWeaponKillfeedSvg(k.weaponName)}</span>
+            ${k.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
+          </span>
+          <span style="color:${victimColor};">${actionVerb} <strong>${k.victim}</strong></span>
+        </div>
+      `;
+    }).join('');
 
   const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
+  const detailSig = `${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
+  if (detailEl.dataset.detailSig === detailSig) return;
+  detailEl.dataset.detailSig = detailSig;
 
   detailEl.innerHTML = `
     <div class="pd-top-bar">
@@ -1089,7 +1406,7 @@ function renderPlayerDetailView() {
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <span class="status-pill ${isAlive ? 'alive-ready' : 'dead-tag'}">${isAlive ? 'COMBAT READY // LIVE' : 'ELIMINATED // KIA'}</span>
             ${p.hasC4 ? `<span class="status-pill c4-carrier">C4 CARRIER</span>` : ''}
-            ${p.defuseKit ? `<span class="status-pill defuse-kit">DEFUSE KIT</span>` : ''}
+            ${p.defuseKit ? `<span class="status-pill defuse-kit">${kitPillLabel}</span>` : ''}
           </div>
           <h2 class="pd-hero-callsign" data-edit-callsign="${safeIdx}" title="Click to edit callsign">${p.name}</h2>
           <div class="pd-hero-skin-label">${bgItem.label}</div>
@@ -1253,6 +1570,7 @@ function renderAll() {
   renderPlayersStage();
   renderUltrawideWing();
   renderPlayerDetailView();
+  renderClientsAndLogsPanel();
 }
 
 /* ==========================================================================
@@ -1290,7 +1608,7 @@ setInterval(() => {
     }
   }
 
-  // Random live combat micro-events (ammo firing, reloads, skirmishes)
+  // Random live combat micro-events (ammo firing, reloads)
   if (Math.random() < 0.35) {
     const alivePlayers = appState.players.filter(p => p.health > 0);
     if (alivePlayers.length > 0) {
@@ -1299,7 +1617,6 @@ setInterval(() => {
       if (w && w.clipMax > 0 && !shooter.reloading) {
         const shots = Math.min(w.clip, Math.ceil(Math.random() * 3));
         w.clip -= shots;
-        shooter.roundDamage += shots * 14;
         if (w.clip <= 0 && w.reserve > 0) {
           shooter.reloading = true;
           setTimeout(() => {
@@ -1333,9 +1650,10 @@ function triggerFirefightStep(announce = true) {
   const attacker = aliveHumans[Math.floor(Math.random() * aliveHumans.length)];
   const targetBot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
   const attackerIdx = appState.players.indexOf(attacker);
+  const prevBotHp = targetBot.health;
   const dmgToBot = announce ? 100 : (45 + Math.floor(Math.random() * 65));
   targetBot.health = Math.max(0, targetBot.health - dmgToBot);
-  attacker.roundDamage += Math.min(100, dmgToBot);
+  attacker.roundDamage += Math.min(prevBotHp, dmgToBot);
 
   if (attacker.activeWeapon && attacker.activeWeapon.clip > 0) {
     attacker.activeWeapon.clip = Math.max(0, attacker.activeWeapon.clip - 3);
@@ -1346,6 +1664,19 @@ function triggerFirefightStep(announce = true) {
     attacker.roundKills = Math.min(10, attacker.roundKills + 1);
     attacker.money = Math.min(16000, attacker.money + 300);
     const isHs = Math.random() < 0.58;
+    if (typeof attacker.hsKills === 'number') {
+      if (isHs) attacker.hsKills += 1;
+    } else {
+      attacker.hsKills = Math.round((attacker.kills * (attacker.hsPercent || 50)) / 100) + (isHs ? 1 : 0);
+    }
+
+    // Award assist if another teammate is alive and bot was previously chipped or in a crossfire
+    const otherHumans = aliveHumans.filter(h => h !== attacker);
+    if (otherHumans.length > 0 && (prevBotHp < 100 || Math.random() < 0.35)) {
+      const assister = otherHumans[Math.floor(Math.random() * otherHumans.length)];
+      assister.assists = (assister.assists || 0) + 1;
+    }
+
     const usedWeapon = attacker.activeWeapon ? attacker.activeWeapon.name : 'AK-47';
     pushKillfeedEvent(
       attacker.name,
@@ -1353,7 +1684,9 @@ function triggerFirefightStep(announce = true) {
       usedWeapon,
       targetBot.name,
       'bot',
-      isHs
+      isHs,
+      '',
+      { attackerSlot: attackerIdx + 1, attackerId: attacker.id }
     );
     triggerPlayerKillFlash(attackerIdx, {
       victim: targetBot.name,
@@ -1371,15 +1704,28 @@ function triggerFirefightStep(announce = true) {
     }
   }
 
+  syncPlayerCombatMetrics(attacker, appState.roundNumber);
+
   // Bot return fire on a human player
   if (Math.random() < 0.55) {
     const victimHuman = aliveHumans[Math.floor(Math.random() * aliveHumans.length)];
+    const victimIdx = appState.players.indexOf(victimHuman);
     const hitDmg = 14 + Math.floor(Math.random() * 26);
     victimHuman.health = Math.max(0, victimHuman.health - hitDmg);
     victimHuman.armor = Math.max(0, victimHuman.armor - Math.ceil(hitDmg * 0.35));
     if (victimHuman.health === 0) {
       victimHuman.deaths += 1;
-      pushKillfeedEvent(targetBot.name, 'bot', 'AK-47', victimHuman.name, 'human', false);
+      const botWeapon = appState.botSide === 'T' ? 'AK-47' : 'M4A1-S';
+      pushKillfeedEvent(
+        targetBot.name,
+        'bot',
+        botWeapon,
+        victimHuman.name,
+        'human',
+        false,
+        '',
+        { victimSlot: victimIdx + 1, victimId: victimHuman.id }
+      );
     }
   }
 
@@ -1419,9 +1765,11 @@ function triggerClutchScenario() {
     if (idx === 0) {
       p.health = 34;
       p.armor = 76;
-      p.roundKills = 3;
-      p.roundDamage = 365;
+      p.roundKills = Math.max(p.roundKills || 0, 3);
+      p.roundDamage = Math.max(p.roundDamage || 0, 365);
+      syncPlayerCombatMetrics(p, appState.roundNumber);
     } else {
+      if (p.health > 0) p.deaths = (p.deaths || 0) + 1;
       p.health = 0;
     }
   });
@@ -1436,19 +1784,61 @@ function triggerClutchScenario() {
 }
 
 function triggerNewRound() {
-  appState.roundNumber = (appState.roundNumber % 24) + 1;
+  const prevRound = appState.roundNumber;
+  const nextRound = (appState.roundNumber % 24) + 1;
+  appState.roundNumber = nextRound;
   appState.humanScore += 1;
   appState.roundPhase = 'live';
   appState.roundTimeLeft = 115.0;
   appState.bombTimeLeft = 40.0;
   appState.killCelebrations = {};
-  appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
-  appState.players.forEach(p => {
-    p.health = 100;
-    p.armor = 100;
-    p.roundKills = 0;
-    p.roundDamage = 0;
+
+  const freshTemplates = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
+  appState.players = freshTemplates.map((tmpl, idx) => {
+    const prevP = appState.players[idx];
+    if (!prevP) {
+      tmpl.health = 100;
+      tmpl.armor = 100;
+      tmpl.roundKills = 0;
+      tmpl.roundDamage = 0;
+      syncPlayerCombatMetrics(tmpl, nextRound);
+      return tmpl;
+    }
+    const prevHistory = { ...(prevP.roundHistory || {}) };
+    prevHistory[prevRound] = {
+      rNum: prevRound,
+      val: Math.max(0, Math.round(Number(prevP.roundDamage) || 0)),
+      kills: Math.max(0, Math.round(Number(prevP.roundKills) || 0))
+    };
+    const nextRoundsObs = Math.max(1, (Number(prevP.roundsObserved) || prevRound) + 1);
+    const nextCompletedDmg = (typeof prevP.completedDamage === 'number' ? prevP.completedDamage : (prevP.adr || 100) * Math.max(1, prevRound - 1)) +
+      Math.max(0, Number(prevP.roundDamage) || 0);
+
+    const updated = {
+      ...tmpl,
+      name: appState.customCallsigns[idx] ? appState.customCallsigns[idx].name : prevP.name,
+      health: 100,
+      armor: 100,
+      flashed: 0,
+      burning: 0,
+      reloading: false,
+      money: Math.min(16000, (prevP.money || tmpl.money) + 3250),
+      kills: prevP.kills,
+      deaths: prevP.deaths,
+      assists: prevP.assists,
+      hsKills: prevP.hsKills,
+      completedDamage: nextCompletedDmg,
+      roundsObserved: nextRoundsObs,
+      adr: prevP.adr,
+      hsPercent: prevP.hsPercent,
+      roundKills: 0,
+      roundDamage: 0,
+      roundHistory: prevHistory
+    };
+    syncPlayerCombatMetrics(updated, nextRound);
+    return updated;
   });
+
   appState.bots = BOT_NAMES.map((name, idx) => ({
     id: `bot-${idx + 1}`,
     name,
@@ -1464,7 +1854,26 @@ function triggerNewRound() {
 function triggerSwapSides() {
   appState.humanSide = appState.humanSide === 'CT' ? 'T' : 'CT';
   appState.botSide = appState.humanSide === 'CT' ? 'T' : 'CT';
-  appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
+  const freshTemplates = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
+  appState.players = freshTemplates.map((tmpl, idx) => {
+    const prevP = appState.players[idx];
+    if (!prevP) return tmpl;
+    return {
+      ...tmpl,
+      name: appState.customCallsigns[idx] ? appState.customCallsigns[idx].name : prevP.name,
+      kills: prevP.kills,
+      deaths: prevP.deaths,
+      assists: prevP.assists,
+      hsKills: prevP.hsKills,
+      completedDamage: prevP.completedDamage,
+      roundsObserved: prevP.roundsObserved,
+      adr: prevP.adr,
+      hsPercent: prevP.hsPercent,
+      roundKills: prevP.roundKills,
+      roundDamage: prevP.roundDamage,
+      roundHistory: prevP.roundHistory
+    };
+  });
   appState.calloutText = `FACTION SWAP // ${appState.humanTeamName} NOW ON ${appState.humanSide === 'CT' ? 'COUNTER-TERRORIST' : 'TERRORIST'} SIDE`;
   appState.calloutHighlight = false;
   renderAll();
@@ -1494,7 +1903,29 @@ function applyServerGsiState(serverState) {
     return;
   }
 
-  appState.mode = 'gsi';
+  // When switching from demo simulation mode to live GSI mode, clear demo simulation killfeed items
+  if (appState.mode !== 'gsi') {
+    appState.mode = 'gsi';
+    appState.killfeed = Array.isArray(serverState.killfeed) ? [...serverState.killfeed].slice(0, 8) : [];
+    appState.killfeed.forEach(k => {
+      if (k && k.id) appState.seenServerKillIds.add(k.id);
+    });
+  } else if (Array.isArray(serverState.killfeed) && serverState.killfeed.length > 0) {
+    // Merge any new server-detected kills into the frontend killfeed ticker
+    const newServerItems = [];
+    for (const item of serverState.killfeed) {
+      if (item && item.id && !appState.seenServerKillIds.has(item.id)) {
+        appState.seenServerKillIds.add(item.id);
+        newServerItems.push(item);
+      }
+    }
+    if (newServerItems.length > 0) {
+      appState.killfeed = [...newServerItems, ...appState.killfeed].slice(0, 8);
+    } else if (appState.killfeed.length === 0) {
+      appState.killfeed = serverState.killfeed.slice(0, 8);
+    }
+  }
+
   const detectedCount = Math.max(1, Math.min(5, serverState.humanPlayers.length));
   const badge = document.getElementById('gsi-source-badge');
   const badgeText = document.getElementById('gsi-source-text');
@@ -1529,23 +1960,228 @@ function applyServerGsiState(serverState) {
 
   // Dynamically adapt to the exact number of detected human players (e.g. 2v10, 3v10, 5v10)
   const baseDefaults = createInitialSimSquad(appState.humanSide, 5);
+  const currRound = Math.max(1, Number(appState.roundNumber) || 1);
+
   appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => {
     const pKey = gp.id || gp.name || `slot-${idx}`;
     const prevK = appState.prevGsiKills[pKey];
-    const currK = Number(gp.kills || 0);
-    if (prevK !== undefined && currK > prevK) {
-      triggerPlayerKillFlash(idx, {
-        victim: 'BOT TARGET',
-        weaponName: (gp.activeWeapon && gp.activeWeapon.name) || 'WEAPON',
-        isHs: Boolean(gp.roundKillHs && gp.roundKillHs > 0),
-        roundKills: Number(gp.roundKills) || 1
-      });
+    const prevRK = appState.prevGsiRoundKills[pKey];
+    const prevHs = appState.prevGsiRoundHs[pKey];
+    const prevHp = appState.prevGsiHealth[pKey];
+
+    const rawK = Number(gp.kills || 0);
+    const rawD = Number(gp.deaths || 0);
+    const rawA = Number(gp.assists || 0);
+    const currRK = Number(gp.roundKills || 0);
+    const currHs = Number(gp.roundKillHs || 0);
+    const currHp = typeof gp.health === 'number' ? gp.health : 100;
+
+    let tracker = appState.gsiPlayerTrackers[pKey];
+    if (!tracker) {
+      const initialTotalKills = Math.max(rawK, currRK);
+      const priorKills = Math.max(0, initialTotalKills - currRK);
+      const priorDmgEstimate = priorKills * 95 + rawA * 40;
+      tracker = {
+        lastRound: currRound,
+        roundsObserved: 1,
+        kills: initialTotalKills,
+        deaths: rawD,
+        assists: rawA,
+        completedRoundHs: Math.max(0, priorKills > 0 ? Math.round((priorKills * (Number(gp.hsPercent) || 50)) / 100) : 0),
+        unconfirmedChipDamage: 0,
+        currentRoundDamage: Number(gp.roundDamage) || (currRK * 100),
+        completedDamage: priorDmgEstimate,
+        lastWeaponId: null,
+        lastWeaponClip: null,
+        roundHistory: (gp.roundHistory && typeof gp.roundHistory === 'object') ? { ...gp.roundHistory } : {}
+      };
+      appState.gsiPlayerTrackers[pKey] = tracker;
     }
-    appState.prevGsiKills[pKey] = currK;
+
+    // Handle new round transition or match restart
+    if (currRound !== tracker.lastRound) {
+      if (currRound === 1 && tracker.lastRound > 1 && rawK === 0 && rawD === 0) {
+        tracker.roundsObserved = 1;
+        tracker.kills = currRK;
+        tracker.deaths = rawD;
+        tracker.assists = rawA;
+        tracker.completedRoundHs = 0;
+        tracker.unconfirmedChipDamage = 0;
+        tracker.currentRoundDamage = Number(gp.roundDamage) || 0;
+        tracker.completedDamage = 0;
+        tracker.roundHistory = {};
+      } else {
+        const prevR = tracker.lastRound;
+        const prevRKFinal = Math.max(0, Number(prevRK) || 0);
+        const prevDmgFinal = Math.min(1000, Math.max(tracker.currentRoundDamage || 0, prevRKFinal * 100));
+        tracker.roundHistory[prevR] = {
+          rNum: prevR,
+          val: Math.round(prevDmgFinal),
+          kills: prevRKFinal
+        };
+        tracker.completedDamage += prevDmgFinal;
+        tracker.completedRoundHs += Math.max(0, Number(prevHs) || 0);
+        tracker.roundsObserved += 1;
+        tracker.unconfirmedChipDamage = 0;
+        tracker.currentRoundDamage = Number(gp.roundDamage) || 0;
+        tracker.lastWeaponClip = null;
+      }
+      tracker.lastRound = currRound;
+    }
+
+    // Merge server roundHistory if available
+    if (gp.roundHistory && typeof gp.roundHistory === 'object') {
+      for (const [rKey, rEntry] of Object.entries(gp.roundHistory)) {
+        const rNum = Number(rKey);
+        if (rNum > 0 && rNum !== currRound && rEntry && typeof rEntry.val === 'number') {
+          tracker.roundHistory[rNum] = { ...rEntry };
+        }
+      }
+    }
+
+    const rkGained = (prevRK !== undefined && currRK > prevRK) ? (currRK - prevRK) : 0;
+    const kGained = (prevK !== undefined && rawK > prevK) ? (rawK - prevK) : 0;
+    const killsGained = Math.max(rkGained, kGained);
+
+    if (killsGained > 0) {
+      tracker.kills = Math.max(rawK, tracker.kills + killsGained, currRK);
+      // Confirmed kill absorbs prior chip damage (1 kill = 100 HP in CS2)
+      tracker.unconfirmedChipDamage = 0;
+
+      const latestServerKf = Array.isArray(serverState.killfeed)
+        ? serverState.killfeed.find(k => k.attackerId === gp.id || k.attacker === gp.name || k.attackerSlot === idx + 1)
+        : null;
+      const weaponName = (latestServerKf && latestServerKf.weaponName) ||
+        (gp.activeWeapon && gp.activeWeapon.name) ||
+        (gp.primaryWeapon && gp.primaryWeapon.name) ||
+        'RIFLE';
+      const isHs = latestServerKf
+        ? Boolean(latestServerKf.isHs)
+        : Boolean((prevHs !== undefined && currHs > prevHs) || (currRK === 1 && currHs === 1));
+      const victimName = (latestServerKf && latestServerKf.victim) ||
+        BOT_NAMES[(Math.max(1, currRK) - 1 + idx * 2) % BOT_NAMES.length];
+
+      triggerPlayerKillFlash(idx, {
+        victim: victimName,
+        weaponName,
+        isHs,
+        roundKills: Math.max(1, currRK)
+      });
+
+      // Fallback: ensure kill is in appState.killfeed even if serverState.killfeed wasn't populated
+      const alreadyInFeed = appState.killfeed[0] &&
+        appState.killfeed[0].attacker === gp.name &&
+        appState.killfeed[0].victim === victimName;
+      if (!alreadyInFeed) {
+        pushKillfeedEvent(
+          gp.name,
+          'human',
+          weaponName,
+          victimName,
+          'bot',
+          isHs,
+          '',
+          { attackerSlot: idx + 1, attackerId: gp.id }
+        );
+      }
+
+      const remainingBots = (serverState.bots || appState.bots).filter(b => b.health > 0).length;
+      if (currRK >= 3) {
+        appState.calloutText = `MULTI-KILL // ${gp.name} (${currRK}K THIS ROUND) — ${remainingBots} BOTS REMAIN`;
+        appState.calloutHighlight = true;
+      } else {
+        appState.calloutText = `ELIMINATION // ${gp.name} TOOK DOWN ${victimName}${isHs ? ' (HEADSHOT)' : ''} (${remainingBots} BOTS LEFT)`;
+        appState.calloutHighlight = false;
+      }
+    } else {
+      tracker.kills = Math.max(rawK, tracker.kills, currRK);
+    }
+
+    // Estimate bounded chip damage from active weapon clip consumption when CS2 omits round_totaldmg
+    const activeWep = gp.activeWeapon || gp.primaryWeapon;
+    if (activeWep && typeof activeWep.clip === 'number') {
+      const wepId = activeWep.id || activeWep.name || 'rifle';
+      if (
+        killsGained === 0 &&
+        tracker.lastWeaponId === wepId &&
+        typeof tracker.lastWeaponClip === 'number' &&
+        activeWep.clip < tracker.lastWeaponClip &&
+        appState.roundPhase !== 'freezetime'
+      ) {
+        const shotsFired = Math.min(8, tracker.lastWeaponClip - activeWep.clip);
+        const chipPerBullet = wepId === 'awp' ? 42 : wepId === 'deagle' ? 18 : 8;
+        tracker.unconfirmedChipDamage = Math.min(72, (tracker.unconfirmedChipDamage || 0) + shotsFired * chipPerBullet);
+      }
+      tracker.lastWeaponId = wepId;
+      tracker.lastWeaponClip = activeWep.clip;
+    }
+
+    if (typeof gp.roundDamage === 'number' && gp.roundDamage > 0) {
+      tracker.currentRoundDamage = gp.roundDamage;
+    } else {
+      tracker.currentRoundDamage = Math.min(1000, currRK * 100 + (tracker.unconfirmedChipDamage || 0));
+    }
+
+    if (prevHp !== undefined && prevHp > 0 && currHp <= 0) {
+      tracker.deaths = Math.max(rawD, tracker.deaths + 1);
+      // Player died: ensure death is reflected in killfeed if not already pushed by server
+      const alreadyInFeed = appState.killfeed[0] && appState.killfeed[0].victim === gp.name;
+      if (!alreadyInFeed) {
+        const botKiller = BOT_NAMES[idx % BOT_NAMES.length];
+        const botWeapon = appState.botSide === 'T' ? 'AK-47' : 'M4A1-S';
+        pushKillfeedEvent(
+          botKiller,
+          'bot',
+          botWeapon,
+          gp.name,
+          'human',
+          false,
+          '',
+          { victimSlot: idx + 1, victimId: gp.id }
+        );
+      }
+    } else {
+      tracker.deaths = Math.max(rawD, tracker.deaths);
+    }
+
+    tracker.assists = Math.max(rawA, tracker.assists);
+
+    appState.prevGsiKills[pKey] = tracker.kills;
+    appState.prevGsiRoundKills[pKey] = currRK;
+    appState.prevGsiRoundHs[pKey] = currHs;
+    appState.prevGsiHealth[pKey] = currHp;
+
+    const liveRoundDamage = Math.round(tracker.currentRoundDamage);
+    tracker.roundHistory[currRound] = {
+      rNum: currRound,
+      val: liveRoundDamage,
+      kills: currRK
+    };
+
+    const totalMatchDamage = tracker.completedDamage + liveRoundDamage;
+    const adrDenominator = (appState.roundPhase === 'freezetime' && currRound > 1 && liveRoundDamage === 0)
+      ? Math.max(1, currRound - 1)
+      : Math.max(1, currRound);
+    const computedAdr = (typeof gp.adr === 'number' && gp.adr > 0)
+      ? gp.adr
+      : Math.round(totalMatchDamage / adrDenominator);
+
+    const totalHsKills = Math.min(tracker.kills, tracker.completedRoundHs + currHs);
+    const computedHsPct = tracker.kills > 0
+      ? Math.max(0, Math.min(100, Math.round((totalHsKills / tracker.kills) * 100)))
+      : (currRK > 0 ? Math.min(100, Math.round((currHs / currRK) * 100)) : 0);
 
     return {
       ...baseDefaults[idx],
-      ...gp
+      ...gp,
+      kills: tracker.kills,
+      deaths: tracker.deaths,
+      assists: tracker.assists,
+      roundKills: currRK,
+      roundDamage: liveRoundDamage,
+      adr: computedAdr,
+      hsPercent: computedHsPct,
+      roundHistory: { ...tracker.roundHistory }
     };
   });
   appState.targetSquadSize = appState.players.length;
@@ -1566,10 +2202,258 @@ function applyServerGsiState(serverState) {
   renderAll();
 }
 
+/* ==========================================================================
+   CLIENT LOGGING, AUDIO CHIME & REAL-TIME TOAST NOTIFICATION ENGINE
+   ========================================================================== */
+let audioCtx = null;
+
+function playNotificationChime(kind = 'connect') {
+  if (!appState.notifSoundEnabled) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+
+    if (kind === 'disconnect') {
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.22);
+    } else {
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.09); // A5
+    }
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.27);
+  } catch (_) {}
+}
+
+function formatShortTime(ts = Date.now()) {
+  const d = new Date(ts);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function pushLocalClientLog({ category = 'system', title, message, timestamp = Date.now() }) {
+  const entry = {
+    id: `local-${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp,
+    timeFormatted: formatShortTime(timestamp),
+    category,
+    title,
+    message
+  };
+  appState.connectionLogs.unshift(entry);
+  if (appState.connectionLogs.length > 60) {
+    appState.connectionLogs.length = 60;
+  }
+  return entry;
+}
+
+function showToastNotification({ category = 'system', title, message, durationMs = 5500 }) {
+  const stack = document.getElementById('toast-stack');
+  const timeStr = formatShortTime();
+
+  // Also log to browser developer console for debugging
+  const consolePrefix = `[CS2-DASH ${timeStr}] [${category.toUpperCase()}]`;
+  if (category.includes('disconnect')) {
+    console.warn(`${consolePrefix} ${title} — ${message}`);
+  } else {
+    console.info(`${consolePrefix} ${title} — ${message}`);
+  }
+
+  if (!stack) return;
+
+  const isConnect = category === 'gsi_connect' || category === 'display_connect';
+  const isDisconnect = category === 'gsi_disconnect' || category === 'display_disconnect';
+  const variantClass = isConnect ? 'toast-connect' : isDisconnect ? 'toast-disconnect' : 'toast-warn';
+
+  const catLabelMap = {
+    gsi_connect: 'CS2 GSI CLIENT ONLINE',
+    gsi_disconnect: 'CS2 GSI CLIENT OFFLINE',
+    display_connect: 'BROADCAST DISPLAY CONNECTED',
+    display_disconnect: 'BROADCAST DISPLAY CLOSED',
+    cfg_download: 'GSI CONFIG DOWNLOADED',
+    system: 'SYSTEM TELEMETRY'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = `toast-card ${variantClass}`;
+  toast.style.setProperty('--toast-duration', `${durationMs}ms`);
+  toast.innerHTML = `
+    <div class="toast-top-row">
+      <span class="toast-category-tag">
+        <span class="live-dot" style="background:currentColor;"></span>
+        <span>${catLabelMap[category] || 'TELEMETRY EVENT'} &bull; ${timeStr}</span>
+      </span>
+      <button type="button" class="toast-close-btn" aria-label="Dismiss Notification">&times;</button>
+    </div>
+    <div class="toast-title">${title}</div>
+    <div class="toast-message">${message}</div>
+    <div class="toast-progress-bar"></div>
+  `;
+
+  const removeToast = () => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  };
+
+  const closeBtn = toast.querySelector('.toast-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', removeToast);
+  }
+
+  stack.prepend(toast);
+  while (stack.children.length > 4) {
+    stack.removeChild(stack.lastElementChild);
+  }
+
+  setTimeout(removeToast, durationMs);
+}
+
+let lastClientsPanelSig = '';
+
+function renderClientsAndLogsPanel() {
+  const gsiCount = (appState.clients && appState.clients.gsiCount) || 0;
+  const displayCount = Math.max(1, (appState.clients && appState.clients.displayCount) || 1);
+  const gsiClients = (appState.clients && appState.clients.gsiClients) || [];
+  const displayClients = (appState.clients && appState.clients.displayClients) || [];
+
+  const dotEl = document.getElementById('client-status-dot');
+  if (dotEl) {
+    dotEl.className = `live-dot client-status-dot ${
+      !appState.sseConnected ? 'offline' : gsiCount > 0 ? 'gsi-active' : 'standby'
+    }`;
+  }
+
+  const triggerTextEl = document.getElementById('clients-trigger-text');
+  if (triggerTextEl) {
+    triggerTextEl.textContent = appState.sseConnected
+      ? `CLIENTS: ${gsiCount} GSI \u2022 ${displayCount} DISPLAY${displayCount === 1 ? '' : 'S'}`
+      : 'SERVER STREAM: RECONNECTING...';
+  }
+
+  const unreadBadge = document.getElementById('client-unread-badge');
+  if (unreadBadge) {
+    if (appState.unreadClientEvents > 0) {
+      unreadBadge.hidden = false;
+      unreadBadge.textContent = String(appState.unreadClientEvents);
+    } else {
+      unreadBadge.hidden = true;
+    }
+  }
+
+  // Avoid unnecessary DOM rebuilds inside the modal if nothing changed
+  const sig = JSON.stringify({
+    sse: appState.sseConnected,
+    gsiClients: gsiClients.map(c => `${c.id}:${c.packetsReceived}:${c.slot}`),
+    displayClients: displayClients.map(d => `${d.id}:${d.view}`),
+    topLogId: appState.connectionLogs[0] && appState.connectionLogs[0].id,
+    logLen: appState.connectionLogs.length
+  });
+  if (sig === lastClientsPanelSig) return;
+  lastClientsPanelSig = sig;
+
+  const gsiCountLabel = document.getElementById('gsi-clients-count-label');
+  if (gsiCountLabel) gsiCountLabel.textContent = `${gsiCount} ACTIVE`;
+
+  const displayCountLabel = document.getElementById('display-clients-count-label');
+  if (displayCountLabel) displayCountLabel.textContent = `${displayCount} ACTIVE`;
+
+  const gsiListEl = document.getElementById('gsi-clients-list');
+  if (gsiListEl) {
+    if (gsiClients.length === 0) {
+      gsiListEl.innerHTML = `<div class="client-empty-row">No CS2 GSI clients connected yet. Waiting for packets on <code>http://${appState.lanIp}:${appState.port}/gsi</code></div>`;
+    } else {
+      gsiListEl.innerHTML = gsiClients.map(c => {
+        const modeLabel = c.mode === 'spectator_allplayers'
+          ? 'SPECTATOR ALLPLAYERS'
+          : c.slot ? `SLOT 0${c.slot} (${c.team || 'CT'})` : 'MENU / STANDBY';
+        return `
+          <div class="client-row">
+            <div class="client-row-main">
+              <span class="client-row-title">${c.name}</span>
+              <span class="client-row-sub">IP: ${c.ip} &bull; ${modeLabel}</span>
+            </div>
+            <div class="client-row-meta">
+              <div>ONLINE</div>
+              <div style="color:var(--text-secondary);">${c.packetsReceived} PKTS</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  const displayListEl = document.getElementById('display-clients-list');
+  if (displayListEl) {
+    if (displayClients.length === 0) {
+      displayListEl.innerHTML = `<div class="client-empty-row">Connecting to SSE broadcast stream...</div>`;
+    } else {
+      displayListEl.innerHTML = displayClients.map(d => {
+        const isSelf = d.id === appState.selfClientId;
+        return `
+          <div class="client-row display-row">
+            <div class="client-row-main">
+              <span class="client-row-title">${d.view}${isSelf ? ' (YOU)' : ''}</span>
+              <span class="client-row-sub">IP: ${d.ip} &bull; ID: ${d.id}</span>
+            </div>
+            <div class="client-row-meta" style="color:var(--squad-accent);">
+              LIVE SSE
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  const logFeedEl = document.getElementById('connection-log-feed');
+  if (logFeedEl) {
+    if (appState.connectionLogs.length === 0) {
+      logFeedEl.innerHTML = `<div class="client-empty-row">No connection events logged in this session.</div>`;
+    } else {
+      const badgeMap = {
+        gsi_connect: 'GSI JOIN',
+        gsi_disconnect: 'GSI DROP',
+        display_connect: 'HUD JOIN',
+        display_disconnect: 'HUD LEFT',
+        cfg_download: 'CFG DL',
+        system: 'SYSTEM'
+      };
+      logFeedEl.innerHTML = appState.connectionLogs.map(entry => {
+        const tStr = entry.timeFormatted ? entry.timeFormatted.split(' ').pop() : formatShortTime(entry.timestamp);
+        return `
+          <div class="log-entry-row cat-${entry.category || 'system'}">
+            <span class="log-time">${tStr}</span>
+            <span class="log-badge">${badgeMap[entry.category] || 'EVENT'}</span>
+            <span class="log-text"><strong>${entry.title}</strong> &mdash; ${entry.message}</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
 function connectSse() {
   if (typeof EventSource === 'undefined') return;
   try {
-    const es = new EventSource('/events');
+    const viewQuery = `?view=${encodeURIComponent(appState.viewMode)}&slot=${encodeURIComponent(appState.selectedPlayerIdx + 1)}`;
+    const es = new EventSource(`/events${viewQuery}`);
+
     es.onmessage = (evt) => {
       try {
         const payload = JSON.parse(evt.data);
@@ -1578,10 +2462,102 @@ function connectSse() {
           appState.port = payload.port || 3000;
           updateGsiConfigModalText();
         }
+        if (payload.clients) {
+          appState.clients = payload.clients;
+        }
+        if (Array.isArray(payload.logs) && payload.logs.length > 0 && appState.connectionLogs.length === 0) {
+          appState.connectionLogs = payload.logs;
+        }
+
+        if (payload.type === 'connected') {
+          const wasDisconnected = !appState.sseConnected;
+          appState.sseConnected = true;
+          if (payload.clientId) {
+            appState.selfClientId = payload.clientId;
+          }
+          if (wasDisconnected) {
+            const gsiCount = (payload.clients && payload.clients.gsiCount) || 0;
+            const dispCount = (payload.clients && payload.clients.displayCount) || 1;
+            showToastNotification({
+              category: 'display_connect',
+              title: 'TELEMETRY STREAM CONNECTED',
+              message: `Connected to server (${appState.lanIp}:${appState.port}) — ${gsiCount} CS2 GSI PC(s), ${dispCount} Display(s) online`,
+              durationMs: 4200
+            });
+          }
+          if (payload.state) {
+            applyServerGsiState(payload.state);
+          }
+          renderClientsAndLogsPanel();
+          return;
+        }
+
+        if (payload.type === 'client_event' && payload.event) {
+          const ev = payload.event;
+          if (Array.isArray(payload.logs)) {
+            appState.connectionLogs = payload.logs;
+          } else {
+            appState.connectionLogs.unshift(ev);
+          }
+
+          // Avoid duplicate toast for our own initial SSE connect (already handled above)
+          const isOwnDisplayConnect =
+            ev.category === 'display_connect' &&
+            ev.meta &&
+            ev.meta.display &&
+            ev.meta.display.id === appState.selfClientId;
+
+          if (!isOwnDisplayConnect) {
+            const clientsContainer = document.getElementById('clients-hover-container');
+            if (!clientsContainer || !clientsContainer.classList.contains('pinned')) {
+              appState.unreadClientEvents += 1;
+            }
+
+            appState.calloutText = `${ev.title} // ${ev.message}`;
+            appState.calloutHighlight = ev.category === 'gsi_connect' || ev.category === 'gsi_disconnect';
+
+            if (ev.category === 'gsi_connect' || ev.category === 'display_connect' || ev.category === 'cfg_download') {
+              playNotificationChime('connect');
+            } else if (ev.category === 'gsi_disconnect' || ev.category === 'display_disconnect') {
+              playNotificationChime('disconnect');
+            }
+
+            showToastNotification({
+              category: ev.category,
+              title: ev.title,
+              message: ev.message,
+              durationMs: ev.category.startsWith('gsi_') ? 6500 : 4800
+            });
+          }
+
+          renderAll();
+          return;
+        }
+
         if (payload.state) {
           applyServerGsiState(payload.state);
         }
+        renderClientsAndLogsPanel();
       } catch (_) {}
+    };
+
+    es.onerror = () => {
+      if (appState.sseConnected) {
+        appState.sseConnected = false;
+        pushLocalClientLog({
+          category: 'display_disconnect',
+          title: 'SERVER STREAM INTERRUPTED',
+          message: 'Lost SSE connection to broadcast server — attempting automatic reconnect...'
+        });
+        playNotificationChime('disconnect');
+        showToastNotification({
+          category: 'display_disconnect',
+          title: 'SERVER CONNECTION LOST',
+          message: 'Attempting automatic reconnect to /events...',
+          durationMs: 5000
+        });
+        renderClientsAndLogsPanel();
+      }
     };
   } catch (_) {}
 }
@@ -1971,6 +2947,70 @@ function bindControls() {
       if (!simHoverContainer.contains(e.target)) {
         simHoverContainer.classList.remove('pinned');
       }
+    });
+  }
+
+  const clientsHoverContainer = document.getElementById('clients-hover-container');
+  const clientsHoverTrigger = document.getElementById('clients-hover-trigger');
+  if (clientsHoverTrigger && clientsHoverContainer) {
+    clientsHoverContainer.addEventListener('mouseenter', () => {
+      if (appState.unreadClientEvents > 0) {
+        appState.unreadClientEvents = 0;
+        renderClientsAndLogsPanel();
+      }
+    });
+    clientsHoverTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      appState.unreadClientEvents = 0;
+      clientsHoverContainer.classList.toggle('pinned');
+      renderClientsAndLogsPanel();
+    });
+    document.addEventListener('click', (e) => {
+      if (!clientsHoverContainer.contains(e.target)) {
+        clientsHoverContainer.classList.remove('pinned');
+      }
+    });
+  }
+
+  const btnToggleSound = document.getElementById('btn-toggle-notif-sound');
+  if (btnToggleSound) {
+    btnToggleSound.addEventListener('click', () => {
+      appState.notifSoundEnabled = !appState.notifSoundEnabled;
+      btnToggleSound.textContent = appState.notifSoundEnabled ? 'AUDIO: ON' : 'AUDIO: OFF';
+      btnToggleSound.classList.toggle('active', appState.notifSoundEnabled);
+      if (appState.notifSoundEnabled) {
+        playNotificationChime('connect');
+      }
+    });
+  }
+
+  const btnTestNotif = document.getElementById('btn-test-client-notif');
+  if (btnTestNotif) {
+    btnTestNotif.addEventListener('click', () => {
+      fetch('/api/test-notification', { method: 'POST' }).catch(() => {
+        showToastNotification({
+          category: 'gsi_connect',
+          title: 'CS2 CLIENT CONNECTED // VORTEX',
+          message: 'Simulated Operator VORTEX (127.0.0.1) connected on Slot 01'
+        });
+      });
+    });
+  }
+
+  const btnResetClients = document.getElementById('btn-reset-clients');
+  if (btnResetClients) {
+    btnResetClients.addEventListener('click', () => {
+      fetch('/api/reset', { method: 'POST' }).catch(() => {});
+    });
+  }
+
+  const btnClearLogs = document.getElementById('btn-clear-client-logs');
+  if (btnClearLogs) {
+    btnClearLogs.addEventListener('click', () => {
+      appState.connectionLogs = [];
+      appState.unreadClientEvents = 0;
+      lastClientsPanelSig = '';
+      renderClientsAndLogsPanel();
     });
   }
 
