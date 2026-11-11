@@ -867,15 +867,6 @@ html, body {
   color: var(--squad-accent);
 }
 
-.role-badge {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
 .round-kills-pips {
   display: flex;
   align-items: center;

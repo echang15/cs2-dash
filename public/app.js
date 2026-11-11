@@ -951,8 +951,7 @@ function applyServerGsiState(serverState) {
   const baseDefaults = createInitialSimSquad(appState.humanSide, 5);
   appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => ({
     ...baseDefaults[idx],
-    ...gp,
-    role: (appState.customCallsigns[idx] && appState.customCallsigns[idx].role) || 'OPERATOR'
+    ...gp
   }));
   appState.targetSquadSize = appState.players.length;
 
@@ -1025,18 +1024,6 @@ function updateGsiConfigModalText() {
   if (box) box.textContent = cfgText;
 }
 
-const ROLE_PRESETS = [
-  'ENTRY // RIFLER',
-  'AWP SPECIALIST',
-  'IN-GAME LEADER',
-  'SITE ANCHOR',
-  'LURK // CLUTCH',
-  'SUPPORT // UTIL',
-  'SECOND ENTRY',
-  'PACK LEADER',
-  'BOT SLAYER'
-];
-
 function saveCustomRoster() {
   try {
     localStorage.setItem('cs2_custom_roster', JSON.stringify(appState.customCallsigns));
@@ -1056,14 +1043,12 @@ function initRosterEditor() {
       if (Array.isArray(parsed) && parsed.length === 5) {
         appState.customCallsigns = parsed.map((item, i) => ({
           name: item.name || DEFAULT_CALLSIGNS[i].name,
-          role: item.role || DEFAULT_CALLSIGNS[i].role,
           ctBg: Number(item.ctBg) || DEFAULT_CALLSIGNS[i].ctBg,
           tBg: Number(item.tBg) || DEFAULT_CALLSIGNS[i].tBg
         }));
         appState.players.forEach((p, i) => {
-          if (appState.customCallsigns[i]) {
-            if (appState.mode === 'simulation') p.name = appState.customCallsigns[i].name;
-            p.role = appState.customCallsigns[i].role;
+          if (appState.customCallsigns[i] && appState.mode === 'simulation') {
+            p.name = appState.customCallsigns[i].name;
           }
         });
       }
@@ -1091,11 +1076,6 @@ function initRosterEditor() {
 
   const grid = document.getElementById('roster-editor-grid');
   grid.innerHTML = appState.customCallsigns.map((c, idx) => {
-    const presetOptions = ROLE_PRESETS.map(r =>
-      `<option value="${r}" ${c.role === r ? 'selected' : ''}>${r}</option>`
-    ).join('');
-    const isCustomRole = !ROLE_PRESETS.includes(c.role);
-
     const ctBgOptions = CT_CARD_BACKGROUNDS.map(bg =>
       `<option value="${bg.id}" ${Number(c.ctBg || DEFAULT_CALLSIGNS[idx].ctBg) === bg.id ? 'selected' : ''}>${bg.label}</option>`
     ).join('');
@@ -1111,17 +1091,6 @@ function initRosterEditor() {
           <input type="text" id="callsign-input-${idx}" value="${c.name}" maxlength="14" />
         </div>
         <div class="roster-input-group">
-          <label for="role-preset-${idx}">ROLE PRESET</label>
-          <select id="role-preset-${idx}">
-            ${presetOptions}
-            <option value="__CUSTOM__" ${isCustomRole ? 'selected' : ''}>CUSTOM ROLE...</option>
-          </select>
-        </div>
-        <div class="roster-input-group">
-          <label for="role-input-${idx}">ROLE TITLE</label>
-          <input type="text" id="role-input-${idx}" value="${c.role}" maxlength="20" placeholder="e.g. AWP SPECIALIST" />
-        </div>
-        <div class="roster-input-group">
           <label for="ct-bg-select-${idx}">CT LOBBY SKIN (1-11)</label>
           <select id="ct-bg-select-${idx}">${ctBgOptions}</select>
         </div>
@@ -1135,8 +1104,6 @@ function initRosterEditor() {
 
   appState.customCallsigns.forEach((_, idx) => {
     const nameInput = document.getElementById(`callsign-input-${idx}`);
-    const rolePreset = document.getElementById(`role-preset-${idx}`);
-    const roleInput = document.getElementById(`role-input-${idx}`);
     const ctBgSelect = document.getElementById(`ct-bg-select-${idx}`);
     const tBgSelect = document.getElementById(`t-bg-select-${idx}`);
 
@@ -1146,33 +1113,6 @@ function initRosterEditor() {
       if (appState.players[idx]) {
         appState.players[idx].name = val;
       }
-      saveCustomRoster();
-      renderAll();
-    });
-
-    rolePreset.addEventListener('change', (e) => {
-      const selected = e.target.value;
-      if (selected === '__CUSTOM__') {
-        roleInput.focus();
-        roleInput.select();
-        return;
-      }
-      roleInput.value = selected;
-      appState.customCallsigns[idx].role = selected;
-      if (appState.players[idx]) {
-        appState.players[idx].role = selected;
-      }
-      saveCustomRoster();
-      renderAll();
-    });
-
-    roleInput.addEventListener('input', (e) => {
-      const val = e.target.value.trim().toUpperCase() || 'OPERATOR';
-      appState.customCallsigns[idx].role = val;
-      if (appState.players[idx]) {
-        appState.players[idx].role = val;
-      }
-      rolePreset.value = ROLE_PRESETS.includes(val) ? val : '__CUSTOM__';
       saveCustomRoster();
       renderAll();
     });
@@ -1237,7 +1177,7 @@ function shuffleAllCardSkins() {
 function bindControls() {
   const modal = document.getElementById('gsi-modal');
 
-  // Delegate clicks on player card role badges, callsigns, or skin cyclers
+  // Delegate clicks on player card callsigns or skin cyclers
   const stageGrid = document.getElementById('players-stage-grid');
   if (stageGrid) {
     stageGrid.addEventListener('click', (e) => {
@@ -1245,14 +1185,6 @@ function bindControls() {
       if (cycleEl) {
         const idx = Number(cycleEl.getAttribute('data-cycle-bg'));
         cyclePlayerCardSkin(idx);
-        return;
-      }
-      const roleEl = e.target.closest('[data-edit-role]');
-      if (roleEl) {
-        const idx = Number(roleEl.getAttribute('data-edit-role'));
-        modal.classList.add('open');
-        const inp = document.getElementById(`role-input-${idx}`);
-        if (inp) { inp.focus(); inp.select(); }
         return;
       }
       const callsignEl = e.target.closest('[data-edit-callsign]');
