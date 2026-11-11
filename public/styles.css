@@ -738,7 +738,7 @@ html, body {
   border: 1px solid var(--border-strong);
   border-top: 4px solid var(--squad-accent);
   display: grid;
-  grid-template-rows: 192px 132px 224px 146px 1fr;
+  grid-template-rows: 232px 128px 220px 138px 1fr;
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, border-color 0.2s ease, opacity 0.25s ease;
@@ -924,7 +924,7 @@ html, body {
 
 .kill-flash-banner {
   position: absolute;
-  top: 146px;
+  top: 168px;
   left: 12px;
   right: 12px;
   z-index: 12;
@@ -991,28 +991,34 @@ html, body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   position: relative;
-  background: linear-gradient(180deg, transparent 0%, transparent 45%, rgba(6, 9, 15, 0.55) 100%);
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(6, 9, 15, 0.62) 0%, transparent 34%, transparent 72%, rgba(6, 9, 15, 0.55) 100%);
 }
 
 .operator-hero-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   z-index: 2;
 }
 
 .operator-name-block {
   min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .operator-callsign {
   font-family: var(--font-display);
-  font-size: 46px;
+  font-size: 44px;
   font-weight: 800;
-  line-height: 0.95;
+  line-height: 0.92;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-primary);
@@ -1020,21 +1026,23 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .operator-sub-status {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
-  min-height: 22px;
+  flex-shrink: 0;
 }
 
 .status-pill {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 800;
-  padding: 2px 7px;
+  padding: 3px 8px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border: 1px solid transparent;
@@ -1074,24 +1082,6 @@ html, body {
   background: rgba(38, 8, 14, 0.85);
   color: #ff6e7f;
   border-color: rgba(247, 54, 76, 0.55);
-}
-
-.operator-avatar-frame {
-  width: 46px;
-  height: 46px;
-  background: rgba(6, 9, 15, 0.68);
-  border: 1px solid var(--squad-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(4px);
-}
-
-.operator-avatar-frame svg {
-  width: 38px;
-  height: 38px;
 }
 
 /* --- ZONE 2: GIANT VITALS (HEALTH & ARMOR) --- */
@@ -1518,7 +1508,7 @@ html, body {
 .stat-cell {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-subtle);
-  padding: 6px 8px;
+  padding: 9px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1534,7 +1524,7 @@ html, body {
 
 .stat-cell-val {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.15;

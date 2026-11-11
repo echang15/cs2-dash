@@ -84,19 +84,6 @@ const UTILITY_SVGS = {
   </svg>`
 };
 
-function getOperatorPortraitSvg(slotIdx, isAlive, isFlashed) {
-  const visorColor = isFlashed ? '#ffffff' : 'var(--squad-accent)';
-  const baseOpacity = isAlive ? '1' : '0.32';
-  return `<svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:${baseOpacity}">
-    <path d="M14 76C14 58 24 50 40 50C56 50 66 58 66 76" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="2"/>
-    <path d="M23 28C23 16 30 10 40 10C50 10 57 16 57 28V42C57 48 50 53 40 53C30 53 23 48 23 42V28Z" fill="#0d131f" stroke="currentColor" stroke-width="2"/>
-    <path d="M27 28H53L50 36H30L27 28Z" fill="${visorColor}"/>
-    <circle cx="22" cy="34" r="3" fill="${visorColor}"/>
-    <circle cx="58" cy="34" r="3" fill="${visorColor}"/>
-    ${!isAlive ? `<path d="M18 18L62 62M62 18L18 62" stroke="#f7364c" stroke-width="4"/>` : ''}
-  </svg>`;
-}
-
 // 11 CT-Side & 11 T-Side Full-Bleed CS2 Lobby Card Backgrounds
 const CT_CARD_BACKGROUNDS = [
   { id: 1, url: '/assets/ct-model-01.jpg', label: '01: SAS // WAREHOUSE // M4A1-S' },
@@ -586,16 +573,13 @@ function renderPlayersStage() {
         ${killBannerHtml}
         
         <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
-        <div class="card-zone-identity">
+        <div class="card-zone-identity" data-cycle-bg="${idx}" title="Click portrait background to cycle ${currentSide} Lobby Skin (${activeBgId}/11)">
           <div class="operator-hero-row">
             <div class="operator-name-block">
-              <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign" style="cursor:pointer;">${p.name}</h2>
+              <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
               <div class="operator-sub-status">
                 ${statusPills.join('')}
               </div>
-            </div>
-            <div class="operator-avatar-frame" data-cycle-bg="${idx}" title="Click to cycle ${currentSide} Lobby Background (${activeBgId}/11)" style="cursor:pointer;">
-              ${getOperatorPortraitSvg(idx, isAlive, isFlashed)}
             </div>
           </div>
         </div>
@@ -1240,18 +1224,18 @@ function bindControls() {
   const stageGrid = document.getElementById('players-stage-grid');
   if (stageGrid) {
     stageGrid.addEventListener('click', (e) => {
-      const cycleEl = e.target.closest('[data-cycle-bg]');
-      if (cycleEl) {
-        const idx = Number(cycleEl.getAttribute('data-cycle-bg'));
-        cyclePlayerCardSkin(idx);
-        return;
-      }
       const callsignEl = e.target.closest('[data-edit-callsign]');
       if (callsignEl) {
         const idx = Number(callsignEl.getAttribute('data-edit-callsign'));
         modal.classList.add('open');
         const inp = document.getElementById(`callsign-input-${idx}`);
         if (inp) { inp.focus(); inp.select(); }
+        return;
+      }
+      const cycleEl = e.target.closest('[data-cycle-bg]');
+      if (cycleEl) {
+        const idx = Number(cycleEl.getAttribute('data-cycle-bg'));
+        cyclePlayerCardSkin(idx);
       }
     });
   }
