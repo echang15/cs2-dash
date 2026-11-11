@@ -745,60 +745,119 @@ html, body {
 }
 
 .player-stadium-card {
-  background: linear-gradient(180deg, #111826 0%, #0b1019 65%, #080c13 100%);
+  background-color: #080c13;
   border: 1px solid var(--border-strong);
-   border-top: 4px solid var(--squad-accent);
+  border-top: 4px solid var(--squad-accent);
   display: grid;
-  grid-template-rows: 176px 138px 232px 150px 1fr;
+  grid-template-rows: 192px 132px 224px 146px 1fr;
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, border-color 0.2s ease, opacity 0.25s ease;
+}
+
+.player-stadium-card.side-ct {
+  --card-model-bg: url('/assets/ct-model.jpg');
+}
+
+.player-stadium-card.side-t {
+  --card-model-bg: url('/assets/t-model.jpg');
+}
+
+/* Full-bleed CS2 Lobby Operator Model Background */
+.player-stadium-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(6, 9, 15, 0.14) 0%,
+      rgba(6, 9, 15, 0.22) 28%,
+      rgba(6, 9, 15, 0.56) 54%,
+      rgba(6, 9, 15, 0.80) 76%,
+      rgba(5, 8, 13, 0.92) 100%
+    ),
+    var(--card-model-bg);
+  background-size: cover;
+  background-position: center 6%;
+  background-repeat: no-repeat;
+  z-index: 0;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.player-stadium-card > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Reactive Status States on Player Card */
 .player-stadium-card.low-health {
   border-color: var(--hp-low);
   border-top-color: var(--hp-low);
-  background: linear-gradient(180deg, rgba(247, 59, 79, 0.16) 0%, #0c1018 55%, #080c13 100%);
+}
+
+.player-stadium-card.low-health::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(247, 59, 79, 0.26) 0%,
+      rgba(15, 8, 12, 0.45) 35%,
+      rgba(10, 8, 12, 0.84) 78%,
+      rgba(6, 8, 13, 0.94) 100%
+    ),
+    var(--card-model-bg);
 }
 
 .player-stadium-card.is-flashed::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.34), transparent 70%);
+  background: radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.42), transparent 72%);
   pointer-events: none;
   z-index: 5;
 }
 
 .player-stadium-card.is-burning {
   border-color: var(--burn-orange);
-  background: linear-gradient(180deg, rgba(255, 107, 26, 0.18) 0%, #0d111a 60%, #080c13 100%);
+}
+
+.player-stadium-card.is-burning::before {
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(255, 107, 26, 0.28) 0%,
+      rgba(18, 10, 8, 0.46) 38%,
+      rgba(10, 9, 13, 0.84) 78%,
+      rgba(6, 8, 13, 0.94) 100%
+    ),
+    var(--card-model-bg);
 }
 
 .player-stadium-card.is-dead {
   border-color: rgba(255, 255, 255, 0.08);
   border-top-color: #3a4354;
-  background: linear-gradient(180deg, #0b0e14 0%, #07090e 100%);
+}
+
+.player-stadium-card.is-dead::before {
+  filter: grayscale(1) brightness(0.32) contrast(1.1);
 }
 
 .player-stadium-card.is-dead .card-zone-vitals,
 .player-stadium-card.is-dead .card-zone-weapons,
 .player-stadium-card.is-dead .card-zone-utility {
-  opacity: 0.34;
+  opacity: 0.38;
   filter: grayscale(0.85);
 }
 
-/* --- ZONE 1: OPERATOR HEADER & PORTRAIT --- */
+/* --- ZONE 1: OPERATOR HEADER & LOBBY MODEL WINDOW --- */
 .card-zone-identity {
   padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
-  background:
-    radial-gradient(circle at 85% 25%, var(--squad-surface), transparent 65%);
+  background: linear-gradient(180deg, rgba(6, 9, 15, 0.45) 0%, transparent 45%, rgba(6, 9, 15, 0.55) 100%);
 }
 
 .operator-top-row {
@@ -849,7 +908,7 @@ html, body {
 
 .operator-hero-row {
   display: grid;
-  grid-template-columns: 1fr 78px;
+  grid-template-columns: 1fr auto;
   align-items: end;
   gap: 10px;
   z-index: 2;
@@ -861,12 +920,13 @@ html, body {
 
 .operator-callsign {
   font-family: var(--font-display);
-  font-size: 44px;
+  font-size: 46px;
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-primary);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.95), 0 1px 3px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -888,58 +948,60 @@ html, body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border: 1px solid transparent;
+  backdrop-filter: blur(4px);
 }
 
 .status-pill.alive-ready {
-  background: rgba(38, 230, 137, 0.12);
+  background: rgba(10, 26, 20, 0.72);
   color: var(--hp-high);
-  border-color: rgba(38, 230, 137, 0.3);
+  border-color: rgba(38, 230, 137, 0.45);
 }
 
 .status-pill.flashed {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   color: #06080c;
 }
 
 .status-pill.burning {
-  background: rgba(255, 107, 26, 0.25);
+  background: rgba(40, 14, 6, 0.82);
   color: #ff9457;
   border-color: var(--burn-orange);
 }
 
 .status-pill.c4-carrier {
-  background: rgba(245, 166, 35, 0.2);
+  background: rgba(38, 24, 6, 0.82);
   color: var(--t-primary);
   border-color: var(--t-primary);
 }
 
 .status-pill.defuse-kit {
-  background: rgba(44, 177, 255, 0.16);
+  background: rgba(6, 22, 36, 0.82);
   color: var(--ct-primary);
   border-color: var(--ct-border);
 }
 
 .status-pill.dead-tag {
-  background: rgba(247, 54, 76, 0.2);
+  background: rgba(38, 8, 14, 0.85);
   color: #ff6e7f;
-  border-color: rgba(247, 54, 76, 0.45);
+  border-color: rgba(247, 54, 76, 0.55);
 }
 
 .operator-avatar-frame {
-  width: 78px;
-  height: 78px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid var(--border-strong);
+  width: 46px;
+  height: 46px;
+  background: rgba(6, 9, 15, 0.68);
+  border: 1px solid var(--squad-border);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(4px);
 }
 
 .operator-avatar-frame svg {
-  width: 66px;
-  height: 66px;
+  width: 38px;
+  height: 38px;
 }
 
 /* --- ZONE 2: GIANT VITALS (HEALTH & ARMOR) --- */

@@ -478,9 +478,10 @@ function renderPlayersStage() {
 
     const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
     const dmgPct = Math.min(100, Math.round((p.roundDamage / 500) * 100));
+    const sideClass = (p.team || appState.humanSide) === 'T' ? 'side-t' : 'side-ct';
 
     return `
-      <article class="player-stadium-card ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''}" id="player-card-${idx + 1}">
+      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''}" id="player-card-${idx + 1}">
         
         <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
         <div class="card-zone-identity">
