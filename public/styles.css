@@ -575,23 +575,26 @@ html, body {
 }
 
 /* ==========================================================================
-   2. SUB-HEADER KILLFEED & PRESENTER CONTROL BAR
+   2. FULL-WIDTH HORIZONTAL KILLFEED & HOVERABLE SIMULATION MODAL
    ========================================================================== */
 .tactical-subheader {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px;
+  display: flex;
+  width: 100%;
   height: 46px;
+  position: relative;
+  z-index: 60;
 }
 
 .killfeed-ticker {
+  width: 100%;
+  flex: 1;
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
-  overflow: hidden;
+  gap: 12px;
+  padding: 0 10px 0 14px;
+  position: relative;
 }
 
 .ticker-label {
@@ -600,12 +603,13 @@ html, body {
   font-weight: 800;
   letter-spacing: 0.1em;
   color: var(--squad-accent);
-  padding-right: 10px;
+  padding-right: 12px;
   border-right: 1px solid var(--border-strong);
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .live-dot {
@@ -621,19 +625,21 @@ html, body {
   gap: 8px;
   overflow: hidden;
   flex: 1;
+  min-width: 0;
 }
 
 .kill-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.04);
+  gap: 8px;
+  padding: 4px 11px;
+  background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--border-subtle);
   font-family: var(--font-tactical);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .kill-attacker.human, .kill-victim.human {
@@ -644,44 +650,175 @@ html, body {
   color: var(--bot-accent);
 }
 
-.kill-weapon-tag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 1px 5px;
-  background: rgba(0, 0, 0, 0.45);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-subtle);
+.kill-weapon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  color: #e6eefc;
+  opacity: 0.95;
 }
 
-.kill-hs-badge {
+.kill-weapon-icon svg {
+  height: 17px;
+  width: auto;
+  max-width: 58px;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+}
+
+.kill-hs-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
   color: var(--c4-red);
+  filter: drop-shadow(0 0 5px rgba(247, 54, 76, 0.55));
+}
+
+.kill-hs-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Hoverable Simulation & Broadcast Controls Modal */
+.sim-hover-container {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.sim-hover-trigger {
+  height: 30px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sim-hover-container:hover .sim-hover-trigger,
+.sim-hover-container.pinned .sim-hover-trigger {
+  background: var(--squad-surface);
+  border-color: var(--squad-accent);
+  color: var(--squad-accent);
+}
+
+.sim-hover-caret {
+  font-size: 10px;
+  opacity: 0.8;
+  transition: transform 0.18s ease;
+}
+
+.sim-hover-container:hover .sim-hover-caret,
+.sim-hover-container.pinned .sim-hover-caret {
+  transform: rotate(180deg);
+}
+
+.sim-hover-modal {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 580px;
+  background: rgba(10, 15, 24, 0.97);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--squad-border);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.88), 0 0 24px rgba(44, 177, 255, 0.16);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+  z-index: 95;
+}
+
+/* Invisible hover bridge so moving cursor from button to modal never drops hover */
+.sim-hover-modal::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+}
+
+.sim-hover-container:hover .sim-hover-modal,
+.sim-hover-container:focus-within .sim-hover-modal,
+.sim-hover-container.pinned .sim-hover-modal {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.sim-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-modal-section + .sim-modal-section {
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sim-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sim-modal-title {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
 }
 
-/* Presenter Controls & Telemetry Bar */
-.presenter-controls {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
+.sim-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.sim-modal-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  padding: 0 10px;
+  flex-wrap: wrap;
 }
 
 .gsi-source-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 3px 8px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   background: rgba(38, 230, 137, 0.1);
   border: 1px solid rgba(38, 230, 137, 0.32);
   color: var(--hp-high);
-  margin-right: 4px;
 }
 
 .gsi-source-badge.gsi-live {
@@ -1555,16 +1692,37 @@ html, body {
 }
 
 .round-dmg-track {
-  height: 6px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--border-subtle);
+  height: 8px;
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid var(--border-strong);
   overflow: hidden;
+  position: relative;
+}
+
+@keyframes roundKillBarScroll {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  100% {
+    background-position: 28px 0, 0 0;
+  }
 }
 
 .round-dmg-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--squad-accent), var(--hp-high));
-  transition: width 0.25s ease;
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.22) 0px,
+      rgba(255, 255, 255, 0.22) 7px,
+      transparent 7px,
+      transparent 14px
+    ),
+    linear-gradient(90deg, var(--squad-accent), var(--hp-high));
+  background-size: 28px 28px, 100% 100%;
+  animation: roundKillBarScroll 1.1s linear infinite;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 10px rgba(38, 230, 137, 0.35);
 }
 
 /* ==========================================================================

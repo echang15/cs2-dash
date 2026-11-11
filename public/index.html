@@ -104,36 +104,60 @@
         </section>
       </header>
 
-      <!-- 2. SUB-HEADER LIVE KILLFEED & PRESENTER BROADCAST CONTROLS -->
-      <nav class="tactical-subheader" aria-label="Live Killfeed and Presenter Controls">
+      <!-- 2. FULL-WIDTH HORIZONTAL LIVE KILLFEED & HOVERABLE SIMULATION / PRESENTER MODAL -->
+      <nav class="tactical-subheader" aria-label="Live Killfeed and Hoverable Simulation Controls">
         <div class="killfeed-ticker">
           <div class="ticker-label">
             <span class="live-dot"></span>
             <span>KILLFEED</span>
           </div>
           <div class="killfeed-items" id="killfeed-items"></div>
-        </div>
 
-        <div class="presenter-controls" id="presenter-controls">
-          <div class="gsi-source-badge" id="gsi-source-badge" title="Current Telemetry Feed Mode">
-            <span class="live-dot"></span>
-            <span id="gsi-source-text">SIMULATION LIVE</span>
-          </div>
-          <button type="button" class="ctrl-btn active" id="btn-toggle-sim">PAUSE SIM</button>
-          <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (2v10, 3v10, 4v10, 5v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
-          <button type="button" class="ctrl-btn" id="btn-sim-firefight">FIREFIGHT</button>
-          <button type="button" class="ctrl-btn danger" id="btn-sim-bomb">PLANT C4</button>
-          <button type="button" class="ctrl-btn" id="btn-sim-flash">FLASH SQUAD</button>
-          <button type="button" class="ctrl-btn" id="btn-sim-clutch">1v4 CLUTCH</button>
-          <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
-          <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
-          <button type="button" class="ctrl-btn" id="btn-shuffle-bgs" title="Cycle/Shuffle Player Card Lobby Backgrounds (11 CT & 11 T Skins)">SHUFFLE SKINS</button>
-          <button type="button" class="ctrl-btn" id="btn-toggle-player-view" title="Switch to Individual Player Deep-Dive View (or open /player.html?slot=1)">PLAYER VIEW</button>
-          <button type="button" class="ctrl-btn" id="btn-open-gsi">TEAMS &amp; GSI .CFG</button>
-          <div class="res-fullscreen-group" role="group" aria-label="Display Resolution and Fullscreen Modes">
-            <button type="button" class="ctrl-btn res-btn active" data-res="1080p" id="btn-fs-1080p" title="1920x1080 (16:9 HD) Fullscreen">1080P FS</button>
-            <button type="button" class="ctrl-btn res-btn" data-res="1440p" id="btn-fs-1440p" title="2560x1440 (16:9 QHD) Fullscreen">1440P FS</button>
-            <button type="button" class="ctrl-btn res-btn" data-res="5120x1440" id="btn-fs-5120" title="5120x1440 (32:9 Super Ultrawide) Fullscreen">5120x1440 FS</button>
+          <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
+          <div class="sim-hover-container" id="sim-hover-container">
+            <button type="button" class="sim-hover-trigger" id="sim-hover-trigger" aria-haspopup="true">
+              <span class="live-dot"></span>
+              <span id="gsi-source-text">SIM &amp; CONTROLS</span>
+              <span class="sim-hover-caret">&#9662;</span>
+            </button>
+
+            <div class="sim-hover-modal" id="presenter-controls" role="region" aria-label="Simulation and Broadcast Controls">
+              <div class="sim-modal-section">
+                <div class="sim-modal-header">
+                  <span class="sim-modal-title">SIMULATION &amp; SCENARIO TRIGGERS</span>
+                  <div class="gsi-source-badge" id="gsi-source-badge" title="Current Telemetry Feed Mode">
+                    <span class="live-dot"></span>
+                    <span>TELEMETRY ACTIVE</span>
+                  </div>
+                </div>
+                <div class="sim-modal-grid">
+                  <button type="button" class="ctrl-btn active" id="btn-toggle-sim">PAUSE SIM</button>
+                  <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (2v10, 3v10, 4v10, 5v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
+                  <button type="button" class="ctrl-btn" id="btn-sim-firefight">FIREFIGHT</button>
+                  <button type="button" class="ctrl-btn danger" id="btn-sim-bomb">PLANT C4</button>
+                  <button type="button" class="ctrl-btn" id="btn-sim-flash">FLASH SQUAD</button>
+                  <button type="button" class="ctrl-btn" id="btn-sim-clutch">1v4 CLUTCH</button>
+                  <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
+                  <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
+                  <button type="button" class="ctrl-btn" id="btn-shuffle-bgs" title="Cycle/Shuffle Player Card Lobby Backgrounds (11 CT & 11 T Skins)">SHUFFLE SKINS</button>
+                </div>
+              </div>
+
+              <div class="sim-modal-section">
+                <div class="sim-modal-header">
+                  <span class="sim-modal-title">VIEWS, ROSTER &amp; FULLSCREEN DISPLAY</span>
+                </div>
+                <div class="sim-modal-row">
+                  <button type="button" class="ctrl-btn" id="btn-toggle-player-view" title="Switch to Individual Player Deep-Dive View (or open /player.html?slot=1)">PLAYER VIEW</button>
+                  <button type="button" class="ctrl-btn" id="btn-open-gsi">TEAMS &amp; GSI .CFG</button>
+                  <div class="res-fullscreen-group" role="group" aria-label="Display Resolution and Fullscreen Modes">
+                    <button type="button" class="ctrl-btn res-btn active" data-res="1080p" id="btn-fs-1080p" title="1920x1080 (16:9 HD) Fullscreen">1080P FS</button>
+                    <button type="button" class="ctrl-btn res-btn" data-res="1440p" id="btn-fs-1440p" title="2560x1440 (16:9 QHD) Fullscreen">1440P FS</button>
+                    <button type="button" class="ctrl-btn res-btn" data-res="5120x1440" id="btn-fs-5120" title="5120x1440 (32:9 Super Ultrawide) Fullscreen">5120x1440 FS</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </nav>

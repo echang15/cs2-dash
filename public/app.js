@@ -81,8 +81,34 @@ const UTILITY_SVGS = {
   </svg>`,
   kevlarOnly: `<svg viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 3L4 6v5.5c0 4.8 3.4 9.3 8 10.5 4.6-1.2 8-5.7 8-10.5V6l-8-3z"/>
+  </svg>`,
+  // CS2 In-Game Style Headshot Silhouette Icon (Cranium + Crosshair Impact Burst)
+  headshot: `<svg viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 2C9.3 2 5.8 5.4 5.8 9.8C5.8 12.2 6.8 14.3 8.4 15.6L8.9 19.5C9 20.3 9.7 21 10.5 21H16.8C17.6 21 18.3 20.3 18.4 19.5L18.9 15.6C20.5 14.3 21.5 12.2 21.5 9.8C21.5 5.4 18.7 2 14 2Z" fill="currentColor" fill-opacity="0.92"/>
+    <circle cx="13.7" cy="9.6" r="4.2" stroke="#070a10" stroke-width="1.6"/>
+    <circle cx="13.7" cy="9.6" r="1.5" fill="#070a10"/>
+    <path d="M1 9.6H9.2M18.2 9.6H27M13.7 3.6V6.2M13.7 13V15.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M21.5 5.2L26.5 3M22.2 9.6L27 9.6M21.5 14L26.5 16.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
   </svg>`
 };
+
+function getWeaponKillfeedSvg(weaponNameOrId) {
+  const raw = String(weaponNameOrId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!raw) return WEAPON_SVGS.ak47;
+  if (WEAPON_SVGS[raw]) return WEAPON_SVGS[raw];
+  if (raw.includes('m4a1')) return WEAPON_SVGS.m4a1s;
+  if (raw.includes('m4a4') || raw.includes('m4')) return WEAPON_SVGS.m4a4;
+  if (raw.includes('awp') || raw.includes('ssg') || raw.includes('sniper')) return WEAPON_SVGS.awp;
+  if (raw.includes('deagle') || raw.includes('deserteagle') || raw.includes('revolver')) return WEAPON_SVGS.deagle;
+  if (raw.includes('usp') || raw.includes('p2000') || raw.includes('fiveseven') || raw.includes('cz')) return WEAPON_SVGS.usps;
+  if (raw.includes('glock') || raw.includes('p250') || raw.includes('tec9') || raw.includes('dual')) return WEAPON_SVGS.glock;
+  if (raw.includes('mp9') || raw.includes('mp7') || raw.includes('mp5') || raw.includes('ump') || raw.includes('p90')) return WEAPON_SVGS.mp9;
+  if (raw.includes('mac10') || raw.includes('bizon')) return WEAPON_SVGS.mac10;
+  if (raw.includes('galil')) return WEAPON_SVGS.galil;
+  if (raw.includes('famas')) return WEAPON_SVGS.famas;
+  if (raw.includes('knife') || raw.includes('bayonet') || raw.includes('karambit')) return WEAPON_SVGS.knife;
+  return WEAPON_SVGS.ak47;
+}
 
 // 11 CT-Side & 11 T-Side Full-Bleed CS2 Lobby Card Backgrounds
 const CT_CARD_BACKGROUNDS = [
@@ -299,8 +325,8 @@ function pushKillfeedEvent(attacker, attackerType, weaponName, victim, victimTyp
     isHs,
     extraTag
   });
-  if (appState.killfeed.length > 5) {
-    appState.killfeed.length = 5;
+  if (appState.killfeed.length > 8) {
+    appState.killfeed.length = 8;
   }
 }
 
@@ -325,6 +351,26 @@ function initSimulationState() {
       attackerType: 'human',
       weaponName: appState.humanSide === 'CT' ? 'M4A1-S' : 'AK-47',
       victim: 'BOT IGOR',
+      victimType: 'bot',
+      isHs: true,
+      extraTag: ''
+    },
+    {
+      id: 'kf-3',
+      attacker: appState.customCallsigns[Math.min(2, appState.players.length - 1)].name,
+      attackerType: 'human',
+      weaponName: appState.humanSide === 'CT' ? 'M4A4' : 'AK-47',
+      victim: 'BOT DMITRI',
+      victimType: 'bot',
+      isHs: false,
+      extraTag: ''
+    },
+    {
+      id: 'kf-4',
+      attacker: appState.customCallsigns[Math.min(4, appState.players.length - 1)].name,
+      attackerType: 'human',
+      weaponName: 'Desert Eagle',
+      victim: 'BOT BORIS',
       victimType: 'bot',
       isHs: true,
       extraTag: ''
@@ -578,9 +624,8 @@ function renderKillfeed() {
   container.innerHTML = appState.killfeed.map(item => `
     <div class="kill-pill">
       <span class="kill-attacker ${item.attackerType}">${item.attacker}</span>
-      <span class="kill-weapon-tag">${item.weaponName}</span>
-      ${item.isHs ? `<span class="kill-hs-badge">[HS]</span>` : ''}
-      ${item.extraTag ? `<span class="kill-hs-badge">[${item.extraTag}]</span>` : ''}
+      <span class="kill-weapon-icon" title="${item.weaponName}">${getWeaponKillfeedSvg(item.weaponName)}</span>
+      ${item.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
       <span class="kill-victim ${item.victimType}">${item.victim}</span>
     </div>
   `).join('');
@@ -588,6 +633,7 @@ function renderKillfeed() {
 
 function renderPlayersStage() {
   const stageEl = document.getElementById('players-stage-grid');
+  const totalRoundBotKills = appState.players.reduce((sum, pl) => sum + Math.max(0, Number(pl.roundKills) || 0), 0);
 
   stageEl.innerHTML = appState.players.map((p, idx) => {
     const isAlive = p.health > 0;
@@ -655,7 +701,10 @@ function renderPlayersStage() {
     }
 
     const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
-    const dmgPct = Math.min(100, Math.round((p.roundDamage / 500) * 100));
+    const playerRoundKills = Math.max(0, Number(p.roundKills) || 0);
+    const roundKillSharePct = totalRoundBotKills > 0
+      ? Math.min(100, Math.round((playerRoundKills / totalRoundBotKills) * 100))
+      : 0;
     const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
     const sideClass = currentSide === 'T' ? 'side-t' : 'side-ct';
     const slotCfg = appState.customCallsigns[idx] || DEFAULT_CALLSIGNS[idx] || DEFAULT_CALLSIGNS[0];
@@ -672,10 +721,10 @@ function renderPlayersStage() {
         <div class="kill-flash-top-line">
           <span class="kill-flash-icon">&#9760;</span>
           <span class="kill-flash-headline">${celeb.headline}</span>
-          ${celeb.isHs ? `<span class="kill-flash-hs-pill">HEADSHOT</span>` : ''}
+          ${celeb.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
         </div>
         <div class="kill-flash-sub-line">
-          <span>${celeb.weaponName}</span>
+          <span class="kill-weapon-icon" title="${celeb.weaponName}">${getWeaponKillfeedSvg(celeb.weaponName)}</span>
           <span>&bull;</span>
           <span>FRAGGED ${celeb.victim}</span>
         </div>
@@ -799,10 +848,10 @@ function renderPlayersStage() {
           <div class="round-damage-footer">
             <div class="round-dmg-meta">
               <span>K/D <strong>${kdRatio}</strong> &bull; HS <strong>${p.hsPercent}%</strong></span>
-              <span>ROUND DMG <strong>${p.roundDamage}</strong></span>
+              <span>RND BOT KILLS <strong>${playerRoundKills}/${totalRoundBotKills} (${roundKillSharePct}%)</strong></span>
             </div>
-            <div class="round-dmg-track">
-              <div class="round-dmg-fill" style="width:${dmgPct}%"></div>
+            <div class="round-dmg-track" title="Percentage of Bot Kills This Round: ${playerRoundKills} of ${totalRoundBotKills} (${roundKillSharePct}%)">
+              <div class="round-dmg-fill" style="width:${roundKillSharePct}%"></div>
             </div>
           </div>
         </div>
@@ -1004,7 +1053,11 @@ function renderPlayerDetailView() {
   const personalKills = appState.killfeed.filter(k => k.attacker === p.name || k.victim === p.name).slice(0, 4);
   const killLogHtml = (personalKills.length > 0 ? personalKills : appState.killfeed.slice(0, 4)).map(k => `
     <div class="pd-kill-log-item">
-      <span><strong style="color:var(--squad-accent);">${k.attacker}</strong> [${k.weaponName}${k.isHs ? ' • HS' : ''}]</span>
+      <span style="display:inline-flex; align-items:center; gap:8px;">
+        <strong style="color:var(--squad-accent);">${k.attacker}</strong>
+        <span class="kill-weapon-icon" title="${k.weaponName}">${getWeaponKillfeedSvg(k.weaponName)}</span>
+        ${k.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
+      </span>
       <span style="color:var(--bot-accent);">FRAGGED ${k.victim}</span>
     </div>
   `).join('');
@@ -1290,7 +1343,7 @@ function triggerFirefightStep(announce = true) {
 
   if (targetBot.health === 0) {
     attacker.kills += 1;
-    attacker.roundKills = Math.min(5, attacker.roundKills + 1);
+    attacker.roundKills = Math.min(10, attacker.roundKills + 1);
     attacker.money = Math.min(16000, attacker.money + 300);
     const isHs = Math.random() < 0.58;
     const usedWeapon = attacker.activeWeapon ? attacker.activeWeapon.name : 'AK-47';
@@ -1906,6 +1959,20 @@ function bindControls() {
       setDisplayResolution(resMode, true);
     });
   });
+
+  const simHoverContainer = document.getElementById('sim-hover-container');
+  const simHoverTrigger = document.getElementById('sim-hover-trigger');
+  if (simHoverTrigger && simHoverContainer) {
+    simHoverTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      simHoverContainer.classList.toggle('pinned');
+    });
+    document.addEventListener('click', (e) => {
+      if (!simHoverContainer.contains(e.target)) {
+        simHoverContainer.classList.remove('pinned');
+      }
+    });
+  }
 
   const legacyFsBtn = document.getElementById('btn-fullscreen');
   if (legacyFsBtn) {
