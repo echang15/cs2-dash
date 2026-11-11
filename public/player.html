@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS2 STADIUM BROADCAST // Individual Player Deep-Dive HUD</title>
+  <meta name="description" content="Real-time Counter-Strike 2 Individual Player Deep-Dive Broadcast View with 1080p, 1440p, and 5120x1440 Fullscreen Telemetry." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="human-side-ct view-mode-player" data-default-view="player">
+  <main class="viewport-shell" id="viewport-shell">
+    <div class="broadcast-stage" id="broadcast-stage">
+
+      <!-- 1. TOP STADIUM BROADCAST SCOREBOARD -->
+      <header class="stadium-header" id="stadium-header">
+        <!-- Left Wing: 5-Player Human Squad -->
+        <section class="team-wing human-wing" id="human-wing" aria-label="Human Squad Telemetry">
+          <div class="faction-emblem" id="human-faction-emblem">
+            <span class="faction-code" id="human-faction-code">CT</span>
+            <span class="faction-sub" id="human-stack-sub">5 STACK</span>
+          </div>
+
+          <div class="team-identity">
+            <div class="team-tag-row">
+              <span class="wing-pill accent" id="human-side-pill">COUNTER-TERRORISTS</span>
+              <span class="wing-pill">HUMAN SQUAD</span>
+            </div>
+            <h1 class="team-title" id="human-team-name" title="Click to change Human Team Name" style="cursor:pointer;">APEX VANGUARD</h1>
+            <div class="team-economy-strip">
+              <span class="econ-item">BANK <strong id="human-team-bank">$21,450</strong></span>
+              <span class="econ-item equip">LOADOUT <strong id="human-team-equip">$26,900</strong></span>
+            </div>
+          </div>
+
+          <div class="alive-cluster">
+            <div class="alive-header">
+              <span class="alive-label">OPERATORS ALIVE</span>
+              <span class="alive-count-num" id="human-alive-text">5 / 5</span>
+            </div>
+            <div class="pip-row-5" id="human-alive-pips"></div>
+          </div>
+
+          <div class="team-score-box" id="human-score">11</div>
+        </section>
+
+        <!-- Center Module: Round Timer, C4 Countdown & Stadium Callouts -->
+        <section class="center-clock-module" id="center-clock-module" aria-label="Match Timer and Bomb Status">
+          <div class="clock-top-meta">
+            <span class="map-badge" id="map-badge">DE_MIRAGE // 5v10</span>
+            <span id="round-number-badge">ROUND 18 / 24</span>
+            <span class="round-phase-badge" id="round-phase-badge">ROUND LIVE</span>
+          </div>
+
+          <div class="clock-main-row">
+            <div class="round-timer-digits" id="round-timer-digits">01:14</div>
+            <div class="c4-status-chip" id="c4-status-chip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2L1 21h22L12 2zm0 4.5l7.5 13H4.5L12 6.5zM11 10v5h2v-5h-2zm0 6v2h2v-2h-2z"/>
+              </svg>
+              <span id="c4-chip-label">C4 ARMED</span>
+            </div>
+          </div>
+
+          <div class="timer-track-wrapper" title="Round / Bomb Countdown Bar (Markers at 10s No-Kit & 5s Kit Defuse)">
+            <div class="timer-track-fill" id="timer-track-fill"></div>
+            <div class="defuse-marker ten-sec" title="10s No-Kit Defuse Cutoff"></div>
+            <div class="defuse-marker five-sec" title="5s Defuse Kit Cutoff"></div>
+          </div>
+
+          <div class="stadium-callout-strip">
+            <span class="callout-alert-text" id="callout-alert-text">STADIUM TELEMETRY LOCKED // 5 HUMANS VS 10 BOTS</span>
+            <span id="defuse-hint-label">MR12 STADIUM FEED</span>
+          </div>
+        </section>
+
+        <!-- Right Wing: 10-Bot Swarm -->
+        <section class="team-wing bot-wing" id="bot-wing" aria-label="Bot Swarm Telemetry">
+          <div class="team-score-box" id="bot-score">6</div>
+
+          <div class="alive-cluster">
+            <div class="alive-header">
+              <span class="alive-count-num" id="bot-alive-text">10 / 10</span>
+              <span class="alive-label">BOT SWARM ALIVE</span>
+            </div>
+            <div class="pip-row-10" id="bot-alive-pips"></div>
+          </div>
+
+          <div class="team-identity">
+            <div class="team-tag-row">
+              <span class="wing-pill">AI OPPOSITION</span>
+              <span class="wing-pill accent" id="bot-side-pill">TERRORISTS</span>
+            </div>
+            <div class="team-title" id="bot-team-name" title="Click to change Bot Team Name" style="cursor:pointer;">BOT SWARM (10)</div>
+            <div class="team-economy-strip">
+              <span class="econ-item">SWARM HP <strong id="bot-total-hp">1000 HP</strong></span>
+              <span class="econ-item equip">THREAT <strong id="bot-threat-level">FULL FORCE</strong></span>
+            </div>
+          </div>
+
+          <div class="faction-emblem" id="bot-faction-emblem">
+            <span class="faction-code" id="bot-faction-code">T</span>
+            <span class="faction-sub">10 BOTS</span>
+          </div>
+        </section>
+      </header>
+
+      <!-- 2. SUB-HEADER LIVE KILLFEED & PRESENTER BROADCAST CONTROLS -->
+      <nav class="tactical-subheader" aria-label="Live Killfeed and Presenter Controls">
+        <div class="killfeed-ticker">
+          <div class="ticker-label">
+            <span class="live-dot"></span>
+            <span>KILLFEED</span>
+          </div>
+          <div class="killfeed-items" id="killfeed-items"></div>
+        </div>
+
+        <div class="presenter-controls" id="presenter-controls">
+          <div class="gsi-source-badge" id="gsi-source-badge" title="Current Telemetry Feed Mode">
+            <span class="live-dot"></span>
+            <span id="gsi-source-text">SIMULATION LIVE</span>
+          </div>
+          <button type="button" class="ctrl-btn active" id="btn-toggle-sim">PAUSE SIM</button>
+          <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (2v10, 3v10, 4v10, 5v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
+          <button type="button" class="ctrl-btn" id="btn-sim-firefight">FIREFIGHT</button>
+          <button type="button" class="ctrl-btn danger" id="btn-sim-bomb">PLANT C4</button>
+          <button type="button" class="ctrl-btn" id="btn-sim-flash">FLASH SQUAD</button>
+          <button type="button" class="ctrl-btn" id="btn-sim-clutch">1v4 CLUTCH</button>
+          <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
+          <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
+          <button type="button" class="ctrl-btn" id="btn-shuffle-bgs" title="Cycle/Shuffle Player Card Lobby Backgrounds (11 CT & 11 T Skins)">SHUFFLE SKINS</button>
+          <button type="button" class="ctrl-btn active" id="btn-toggle-player-view" title="Return to 5-Player Squad View or Switch Operator">SQUAD VIEW</button>
+          <button type="button" class="ctrl-btn" id="btn-open-gsi">TEAMS &amp; GSI .CFG</button>
+          <div class="res-fullscreen-group" role="group" aria-label="Display Resolution and Fullscreen Modes">
+            <button type="button" class="ctrl-btn res-btn active" data-res="1080p" id="btn-fs-1080p" title="1920x1080 (16:9 HD) Fullscreen">1080P FS</button>
+            <button type="button" class="ctrl-btn res-btn" data-res="1440p" id="btn-fs-1440p" title="2560x1440 (16:9 QHD) Fullscreen">1440P FS</button>
+            <button type="button" class="ctrl-btn res-btn" data-res="5120x1440" id="btn-fs-5120" title="5120x1440 (32:9 Super Ultrawide) Fullscreen">5120x1440 FS</button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- 3. MAIN BROADCAST STAGE BODY -->
+      <div class="stage-main-area" id="stage-main-area">
+        <section class="players-stage-grid" id="players-stage-grid" aria-label="Human Squad Player Cards"></section>
+        <aside class="ultrawide-tactical-wing" id="ultrawide-tactical-wing" aria-label="32:9 Super Ultrawide Extended Telemetry"></aside>
+        <section class="player-detail-view" id="player-detail-view" aria-label="Individual Player Deep-Dive Telemetry"></section>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 4. CS2 GSI CONFIG & PRESENTER ROSTER MODAL -->
+  <div class="modal-backdrop" id="gsi-modal" role="dialog" aria-modal="true" aria-labelledby="gsi-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 class="modal-title" id="gsi-modal-title">TEAM NAMES, CARD SKINS, PLAYER URLS &amp; CS2 GSI SETUP</h2>
+        <button type="button" class="ctrl-btn" id="btn-close-gsi">CLOSE [ESC]</button>
+      </div>
+
+      <!-- Team Names & Squad Size Configuration -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:end; background:rgba(0,0,0,0.32); border:1px solid var(--border-subtle); padding:12px 14px;">
+        <div class="roster-input-group">
+          <label for="input-human-team-name">HUMAN SQUAD TEAM NAME</label>
+          <input type="text" id="input-human-team-name" value="APEX VANGUARD" maxlength="22" />
+        </div>
+        <div class="roster-input-group">
+          <label for="input-bot-team-name">BOT OPPOSITION TEAM NAME</label>
+          <input type="text" id="input-bot-team-name" value="BOT SWARM (10)" maxlength="22" />
+        </div>
+        <div class="roster-input-group">
+          <label>HUMAN PLAYERS (AUTO IN GSI)</label>
+          <div style="display:flex; gap:4px;" id="modal-squad-size-btns">
+            <button type="button" class="ctrl-btn" data-size="2">2v10</button>
+            <button type="button" class="ctrl-btn" data-size="3">3v10</button>
+            <button type="button" class="ctrl-btn" data-size="4">4v10</button>
+            <button type="button" class="ctrl-btn active" data-size="5">5v10</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS, LOBBY BACKGROUNDS &amp; INDIVIDUAL PLAYER URLS</h4>
+        <div class="roster-editor-grid" id="roster-editor-grid"></div>
+      </div>
+
+      <div class="modal-steps">
+        <div class="step-card">
+          <h4>MODE A: SINGLE SPECTATOR / OBSERVER PC</h4>
+          <p>Drop <code>gamestate_integration_cs2dash.cfg</code> into the observer PC's CS2 <code>cfg</code> folder. Spectating a 2v10, 3v10, or 5v10 match automatically detects the active human players and renders their cards.</p>
+        </div>
+        <div class="step-card">
+          <h4>MODE B: 2 TO 5 PLAYER PCs (MULTI-CLIENT MERGE)</h4>
+          <p>No spectator PC? Drop the <code>.cfg</code> file onto each friend's PC! Whether 2, 3, 4, or 5 friends join the server, the dashboard dynamically scales the cards to match the connected players.</p>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">
+            CS2 Path: <code>.../Counter-Strike Global Offensive/game/csgo/cfg/gamestate_integration_cs2dash.cfg</code>
+          </span>
+          <div style="display:flex; gap:8px;">
+            <a href="/gamestate_integration_cs2dash.cfg" download="gamestate_integration_cs2dash.cfg" class="ctrl-btn active" style="text-decoration:none;">DOWNLOAD .CFG FILE</a>
+            <button type="button" class="ctrl-btn" id="btn-copy-cfg">COPY .CFG</button>
+          </div>
+        </div>
+        <pre class="cfg-code-box" id="cfg-code-box"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

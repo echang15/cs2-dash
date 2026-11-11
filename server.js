@@ -516,8 +516,11 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve Static Files
+  // Serve Static Files (including /player and /player/:slot routes)
   let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+  if (url.pathname === '/player' || /^\/player\/[1-5]$/.test(url.pathname)) {
+    filePath = '/player.html';
+  }
   const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, '');
   const absPath = path.join(PUBLIC_DIR, safePath);
 

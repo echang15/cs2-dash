@@ -159,6 +159,9 @@ const appState = {
   killCelebrations: {},
   prevGsiKills: {},
   damageTrails: [100, 100, 100, 100, 100],
+  displayRes: '1080p', // '1080p' | '1440p' | '5120x1440'
+  viewMode: 'squad', // 'squad' | 'player'
+  selectedPlayerIdx: 0, // 0..4
   lanIp: window.location.hostname || '127.0.0.1',
   port: window.location.port || '3000'
 };
@@ -330,15 +333,109 @@ function initSimulationState() {
 }
 
 /* ==========================================================================
-   1080P STAGE SCALING ENGINE
+   1080P / 1440P / 5120x1440 STAGE SCALING & URL ROUTING ENGINE
    ========================================================================== */
+function initRouteAndResolutionFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const path = window.location.pathname || '';
+  const pathMatch = path.match(/\/player\/([1-5])/i);
+
+  const slotParam = params.get('slot') || params.get('player') || (pathMatch ? pathMatch[1] : null);
+  const isPlayerRoute =
+    document.body.dataset.defaultView === 'player' ||
+    path.includes('/player') ||
+    params.get('view') === 'player' ||
+    Boolean(slotParam);
+
+  if (isPlayerRoute) {
+    appState.viewMode = 'player';
+  }
+  if (slotParam) {
+    const parsed = Math.max(1, Math.min(5, Number(slotParam) || 1));
+    appState.selectedPlayerIdx = parsed - 1;
+  }
+
+  const resParam = params.get('res');
+  if (resParam === '1080p' || resParam === '1440p' || resParam === '5120x1440') {
+    appState.displayRes = resParam;
+  } else if (window.innerWidth >= 3400 && window.innerWidth / Math.max(1, window.innerHeight) >= 2.9) {
+    appState.displayRes = '5120x1440';
+  }
+}
+
 function updateStageScale() {
-  const scaleX = window.innerWidth / 1920;
-  const scaleY = window.innerHeight / 1080;
+  const isSuperUltrawide = appState.displayRes === '5120x1440';
+  const targetW = isSuperUltrawide ? 3840 : 1920;
+  const targetH = 1080;
+  document.documentElement.style.setProperty('--stage-w', `${targetW}px`);
+  document.documentElement.style.setProperty('--stage-h', `${targetH}px`);
+  const scaleX = window.innerWidth / targetW;
+  const scaleY = window.innerHeight / targetH;
   const scale = Math.min(scaleX, scaleY);
   document.documentElement.style.setProperty('--stage-scale', scale.toFixed(4));
 }
 
+function setDisplayResolution(resMode, triggerFullscreen = true) {
+  if (!['1080p', '1440p', '5120x1440'].includes(resMode)) resMode = '1080p';
+  const wasSameRes = appState.displayRes === resMode;
+  appState.displayRes = resMode;
+  updateStageScale();
+
+  const labelMap = {
+    '1080p': '1920x1080 (16:9 FULL HD)',
+    '1440p': '2560x1440 (16:9 QHD 1440P)',
+    '5120x1440': '5120x1440 (32:9 SUPER ULTRAWIDE)'
+  };
+  appState.calloutText = `DISPLAY MODE LOCKED // ${labelMap[resMode]}`;
+  appState.calloutHighlight = true;
+
+  if (triggerFullscreen) {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else if (wasSameRes) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+  renderAll();
+}
+
+function openPlayerDetailView(slotIdx = 0, pushUrl = true) {
+  const maxIdx = Math.max(0, appState.players.length - 1);
+  appState.selectedPlayerIdx = Math.max(0, Math.min(maxIdx, Number(slotIdx) || 0));
+  appState.viewMode = 'player';
+  if (pushUrl && window.history && window.history.replaceState) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'player');
+    url.searchParams.set('slot', String(appState.selectedPlayerIdx + 1));
+    window.history.replaceState({}, '', url.toString());
+  }
+  const p = appState.players[appState.selectedPlayerIdx];
+  if (p) {
+    appState.calloutText = `INSPECTING OPERATOR 0${appState.selectedPlayerIdx + 1} // ${p.name} DEEP-DIVE TELEMETRY`;
+    appState.calloutHighlight = false;
+  }
+  renderAll();
+}
+
+function setSquadView(pushUrl = true) {
+  appState.viewMode = 'squad';
+  if (pushUrl && window.history && window.history.replaceState) {
+    const url = new URL(window.location.href);
+    if (url.pathname.includes('player')) {
+      window.location.href = '/';
+      return;
+    }
+    url.searchParams.delete('view');
+    url.searchParams.delete('slot');
+    url.searchParams.delete('player');
+    window.history.replaceState({}, '', url.toString());
+  }
+  appState.calloutText = `SQUAD OVERVIEW // ${appState.players.length} HUMANS VS ${appState.bots.length || 10} BOTS`;
+  appState.calloutHighlight = false;
+  renderAll();
+}
+
+initRouteAndResolutionFromUrl();
 window.addEventListener('resize', updateStageScale);
 updateStageScale();
 
@@ -358,7 +455,24 @@ function formatClock(seconds) {
 
 function renderTopHeader() {
   const isCT = appState.humanSide === 'CT';
-  document.body.className = isCT ? 'human-side-ct' : 'human-side-t';
+  const classes = [
+    isCT ? 'human-side-ct' : 'human-side-t',
+    `res-${appState.displayRes}`
+  ];
+  if (appState.viewMode === 'player') {
+    classes.push('view-mode-player');
+  }
+  document.body.className = classes.join(' ');
+
+  document.querySelectorAll('.res-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-res') === appState.displayRes);
+  });
+
+  const playerViewBtn = document.getElementById('btn-toggle-player-view');
+  if (playerViewBtn) {
+    playerViewBtn.classList.toggle('active', appState.viewMode === 'player');
+    playerViewBtn.textContent = appState.viewMode === 'player' ? 'SQUAD VIEW' : 'PLAYER VIEW';
+  }
 
   const squadCount = Math.max(1, appState.players.length);
   const botCount = appState.bots.length || 10;
@@ -579,6 +693,7 @@ function renderPlayersStage() {
               <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
               <div class="operator-sub-status">
                 ${statusPills.join('')}
+                <a href="/player.html?slot=${idx + 1}" class="player-inspect-pill" data-open-player="${idx}" title="Open Individual Player Deep-Dive View (/player.html?slot=${idx + 1})">INSPECT &#8599;</a>
               </div>
             </div>
           </div>
@@ -697,10 +812,394 @@ function renderPlayersStage() {
   }).join('');
 }
 
+function renderUltrawideWing() {
+  const wingEl = document.getElementById('ultrawide-tactical-wing');
+  if (!wingEl) return;
+  if (appState.displayRes !== '5120x1440' || appState.viewMode === 'player') return;
+
+  const botsHtml = appState.bots.map((b, i) => {
+    const alive = b.health > 0;
+    return `
+      <div class="uw-bot-card ${alive ? '' : 'dead'}">
+        <div class="uw-bot-top">
+          <span class="uw-bot-name">${b.name.replace('BOT ', '')}</span>
+          <span class="uw-bot-hp">${alive ? `${b.health} HP` : 'KIA'}</span>
+        </div>
+        <div class="uw-bot-bar">
+          <div class="uw-bot-bar-fill" style="width:${Math.max(0, b.health)}%"></div>
+        </div>
+        <div style="font-family:var(--font-mono); font-size:9px; color:var(--text-muted); display:flex; justify-content:space-between;">
+          <span>UNIT #${String(i + 1).padStart(2, '0')}</span>
+          <span>${alive ? `ARMOR ${b.armor}` : 'ELIMINATED'}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const sortedPlayers = [...appState.players].map((p, idx) => ({ ...p, origIdx: idx }))
+    .sort((a, b) => (b.kills * 100 + b.adr) - (a.kills * 100 + a.adr));
+  const mvp = sortedPlayers[0] || appState.players[0];
+  const mvpIdx = mvp ? mvp.origIdx : 0;
+  const currentSide = appState.humanSide === 'T' ? 'T' : 'CT';
+  const slotCfg = appState.customCallsigns[mvpIdx] || DEFAULT_CALLSIGNS[0];
+  const mvpBgUrl = getCardBackgroundUrl(currentSide, currentSide === 'T' ? slotCfg.tBg : slotCfg.ctBg);
+  const mvpKd = mvp ? (mvp.kills / Math.max(1, mvp.deaths)).toFixed(2) : '0.00';
+
+  const lbRowsHtml = sortedPlayers.map((p, rank) => {
+    const kd = (p.kills / Math.max(1, p.deaths)).toFixed(2);
+    return `
+      <div class="uw-lb-row" data-open-player="${p.origIdx}" title="Click to inspect ${p.name}">
+        <span class="uw-lb-rank">#0${rank + 1}</span>
+        <span class="uw-lb-name">${p.name}</span>
+        <span class="uw-lb-stat">K/D <strong>${kd}</strong></span>
+        <span class="uw-lb-stat">ADR <strong>${p.adr}</strong> &bull; <strong>${p.kills}K</strong></span>
+      </div>
+    `;
+  }).join('');
+
+  wingEl.innerHTML = `
+    <div class="uw-panel span-2">
+      <div class="uw-panel-header">
+        <span class="uw-panel-title">BOT SWARM LIVE TELEMETRY MATRIX (10 UNITS)</span>
+        <span class="uw-panel-sub">5120x1440 SUPER ULTRAWIDE COMMAND WING</span>
+      </div>
+      <div class="uw-bot-grid">${botsHtml}</div>
+    </div>
+
+    <div class="uw-panel">
+      <div class="uw-panel-header">
+        <span class="uw-panel-title">MATCH MVP SPOTLIGHT</span>
+        <a href="/player.html?slot=${mvpIdx + 1}" class="player-inspect-pill" data-open-player="${mvpIdx}">DEEP DIVE &#8599;</a>
+      </div>
+      ${mvp ? `
+        <div class="uw-mvp-card">
+          <div class="uw-mvp-portrait" style="--mvp-bg: url('${mvpBgUrl}');">
+            <span class="uw-mvp-tag">TOP FRAGGER</span>
+          </div>
+          <div class="uw-mvp-stats">
+            <div>
+              <div class="uw-panel-sub">SLOT 0${mvpIdx + 1} // ${currentSide} OPERATOR</div>
+              <div class="uw-mvp-name">${mvp.name}</div>
+            </div>
+            <div class="stats-grid-4">
+              <div class="stat-cell highlight">
+                <span class="stat-cell-label">KILLS</span>
+                <span class="stat-cell-val">${mvp.kills}</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-cell-label">K/D</span>
+                <span class="stat-cell-val">${mvpKd}</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-cell-label">ADR</span>
+                <span class="stat-cell-val">${mvp.adr}</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-cell-label">HS%</span>
+                <span class="stat-cell-val">${mvp.hsPercent}%</span>
+              </div>
+            </div>
+            <div class="round-dmg-meta">
+              <span>ACTIVE WEAPON: <strong>${(mvp.activeWeapon && mvp.activeWeapon.name) || 'RIFLE'}</strong></span>
+              <span>ROUND DMG: <strong>${mvp.roundDamage}</strong></span>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="uw-panel">
+      <div class="uw-panel-header">
+        <span class="uw-panel-title">SQUAD IMPACT LEADERBOARD</span>
+        <span class="uw-panel-sub">CLICK OPERATOR FOR FULL VIEW</span>
+      </div>
+      <div class="uw-leaderboard-list">${lbRowsHtml}</div>
+    </div>
+  `;
+}
+
+function renderPlayerDetailView() {
+  const detailEl = document.getElementById('player-detail-view');
+  if (!detailEl) return;
+  if (appState.viewMode !== 'player') return;
+
+  const safeIdx = Math.max(0, Math.min(appState.players.length - 1, appState.selectedPlayerIdx || 0));
+  const p = appState.players[safeIdx] || appState.players[0];
+  if (!p) return;
+
+  const isAlive = p.health > 0;
+  const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
+  const slotCfg = appState.customCallsigns[safeIdx] || DEFAULT_CALLSIGNS[safeIdx] || DEFAULT_CALLSIGNS[0];
+  const activeBgId = currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1);
+  const bgList = currentSide === 'T' ? T_CARD_BACKGROUNDS : CT_CARD_BACKGROUNDS;
+  const bgItem = bgList.find(b => b.id === Number(activeBgId)) || bgList[0];
+  const bgUrl = bgItem.url;
+
+  const weapon = p.activeWeapon || p.primaryWeapon || {
+    id: 'ak47',
+    name: 'AK-47',
+    skin: 'STANDARD ISSUE',
+    clip: 30,
+    clipMax: 30,
+    reserve: 90
+  };
+  const weaponSvg = WEAPON_SVGS[weapon.id] || WEAPON_SVGS.ak47;
+  const sidearm = p.secondaryWeapon || { id: 'deagle', name: 'Desert Eagle', skin: 'STANDARD', clip: 7, clipMax: 7, reserve: 35 };
+  const sidearmSvg = WEAPON_SVGS[sidearm.id] || WEAPON_SVGS.usps;
+
+  const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
+  const kpr = (p.kills / Math.max(1, appState.roundNumber)).toFixed(2);
+  const survivalPct = Math.max(18, Math.min(96, Math.round(((appState.roundNumber - p.deaths) / Math.max(1, appState.roundNumber)) * 100)));
+  const rating2 = (Number(kdRatio) * 0.48 + (p.adr / 100) * 0.44 + (p.hsPercent / 100) * 0.25).toFixed(2);
+
+  // Operator switcher tabs
+  const tabsHtml = appState.players.map((op, idx) => `
+    <button type="button" class="pd-tab-btn ${idx === safeIdx ? 'active' : ''}" data-select-player="${idx}">
+      <span class="pd-tab-hp-dot ${op.health > 0 ? '' : 'dead'}"></span>
+      <span>0${idx + 1} // ${op.name}</span>
+      <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${op.health}HP</span>
+    </button>
+  `).join('');
+
+  // Grenade belt slots
+  const grenadeBeltHtml = [0, 1, 2, 3].map(slotIdx => {
+    const gType = p.grenades && p.grenades[slotIdx];
+    const labelMap = { smoke: 'SMOKE', flash: 'FLASHBANG', he: 'HE GRENADE', molotov: 'MOLOTOV', decoy: 'DECOY' };
+    if (!gType) {
+      return `<div class="grenade-slot"><span class="grenade-slot-label">EMPTY</span></div>`;
+    }
+    return `<div class="grenade-slot occupied">
+      ${UTILITY_SVGS[gType] || UTILITY_SVGS.he}
+      <span class="grenade-slot-label">${labelMap[gType] || 'UTIL'}</span>
+    </div>`;
+  }).join('');
+
+  const gearSlotHtml = p.hasC4
+    ? `<div class="gear-kit-slot has-c4">${UTILITY_SVGS.c4}<span class="grenade-slot-label">C4 BOMB</span></div>`
+    : p.defuseKit
+      ? `<div class="gear-kit-slot has-kit">${UTILITY_SVGS.defuseKit}<span class="grenade-slot-label">DEF KIT</span></div>`
+      : `<div class="gear-kit-slot"><span class="grenade-slot-label">NO KIT</span></div>`;
+
+  // Simulated/derived 8-round damage history bars for this operator
+  const baseDmg = p.adr || 110;
+  const roundHistory = [-7, -6, -5, -4, -3, -2, -1, 0].map(offset => {
+    const rNum = Math.max(1, appState.roundNumber + offset);
+    const val = offset === 0
+      ? p.roundDamage
+      : Math.max(24, Math.min(420, Math.round(baseDmg + ((rNum * 37 + safeIdx * 53) % 140) - 55)));
+    const pct = Math.max(8, Math.min(100, Math.round((val / 360) * 100)));
+    return { rNum, val, pct };
+  });
+
+  const roundBarsHtml = roundHistory.map(item => `
+    <div class="pd-round-bar-col">
+      <span style="font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text-primary);">${item.val}</span>
+      <div class="pd-round-bar-track">
+        <div class="pd-round-bar-fill" style="height:${item.pct}%"></div>
+      </div>
+      <span class="pd-round-bar-label">R${item.rNum}</span>
+    </div>
+  `).join('');
+
+  const personalKills = appState.killfeed.filter(k => k.attacker === p.name || k.victim === p.name).slice(0, 4);
+  const killLogHtml = (personalKills.length > 0 ? personalKills : appState.killfeed.slice(0, 4)).map(k => `
+    <div class="pd-kill-log-item">
+      <span><strong style="color:var(--squad-accent);">${k.attacker}</strong> [${k.weaponName}${k.isHs ? ' • HS' : ''}]</span>
+      <span style="color:var(--bot-accent);">FRAGGED ${k.victim}</span>
+    </div>
+  `).join('');
+
+  const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
+
+  detailEl.innerHTML = `
+    <div class="pd-top-bar">
+      <div class="pd-operator-tabs">
+        <button type="button" class="ctrl-btn" data-back-squad="true" title="Return to 5-Player Squad Broadcast View">&larr; ALL SQUAD CARDS</button>
+        ${tabsHtml}
+      </div>
+      <div class="pd-url-badge-row">
+        <a href="${standaloneUrl}" target="_blank" rel="noopener" class="pd-url-pill" title="Open dedicated URL for ${p.name} in a new window/monitor">
+          DEDICATED PLAYER URL: <strong>${standaloneUrl} &#8599;</strong>
+        </a>
+      </div>
+    </div>
+
+    <div class="pd-main-grid">
+      <!-- LEFT COLUMN: FULL-HEIGHT 9:16 OPERATOR PORTRAIT CARD -->
+      <article class="pd-hero-card" style="--card-model-bg: url('${bgUrl}');">
+        <div class="pd-hero-top">
+          <span class="pd-slot-badge">OPERATOR 0${safeIdx + 1} // ${currentSide} FACTION</span>
+          <button type="button" class="pd-skin-cycle-btn" data-cycle-bg="${safeIdx}">CYCLE SKIN (${activeBgId}/11)</button>
+        </div>
+
+        <div class="pd-hero-bottom">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="status-pill ${isAlive ? 'alive-ready' : 'dead-tag'}">${isAlive ? 'COMBAT READY // LIVE' : 'ELIMINATED // KIA'}</span>
+            ${p.hasC4 ? `<span class="status-pill c4-carrier">C4 CARRIER</span>` : ''}
+            ${p.defuseKit ? `<span class="status-pill defuse-kit">DEFUSE KIT</span>` : ''}
+          </div>
+          <h2 class="pd-hero-callsign" data-edit-callsign="${safeIdx}" title="Click to edit callsign">${p.name}</h2>
+          <div class="pd-hero-skin-label">${bgItem.label}</div>
+        </div>
+      </article>
+
+      <!-- CENTER COLUMN: LIVE VITALS, PRIMARY/SECONDARY WEAPONS & UTILITY BELT -->
+      <div class="pd-column">
+        <div class="pd-module">
+          <div class="pd-module-header">
+            <span class="pd-module-title">BIOMETRIC &amp; ARMOR TELEMETRY</span>
+            <span class="pd-module-sub">${isAlive ? 'ACTIVE HEARTBEAT LOCKED' : 'FLATLINED THIS ROUND'}</span>
+          </div>
+          <div class="pd-vitals-big-row">
+            <div class="pd-vital-box">
+              <div class="pd-vital-num-row">
+                <span class="pd-vital-num">${p.health}</span>
+                <span class="pd-module-sub">HEALTH POINTS</span>
+              </div>
+              <div class="hp-bar-outer">
+                <div class="hp-bar-current" style="width:${p.health}%"></div>
+                <div class="hp-bar-segments-overlay"></div>
+              </div>
+            </div>
+            <div class="pd-vital-box">
+              <div class="pd-vital-num-row">
+                <span class="pd-vital-num armor">${p.armor}</span>
+                <span class="pd-module-sub">${p.helmet ? 'HELMET + KEVLAR' : 'KEVLAR VEST'}</span>
+              </div>
+              <div class="hp-bar-outer">
+                <div class="hp-bar-current" style="width:${p.armor}%; background:var(--squad-accent);"></div>
+                <div class="hp-bar-segments-overlay"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pd-module fill-space">
+          <div class="pd-module-header">
+            <span class="pd-module-title">ARSENAL &amp; MAGAZINE TELEMETRY</span>
+            <span class="pd-module-sub">${p.reloading ? 'RELOADING MAGAZINE' : 'WEAPON READY'}</span>
+          </div>
+
+          <div class="pd-weapon-showcase">
+            <div class="weapon-header-row">
+              <div class="weapon-name-group">
+                <span class="weapon-title">${weapon.name}</span>
+                <span class="weapon-skin-sub">SKIN // ${weapon.skin || 'FACTORY ISSUE'}</span>
+              </div>
+              <div class="ammo-counter-nums">
+                <span class="ammo-clip-big">${weapon.clip}</span>
+                <span class="ammo-reserve-sub">/ ${weapon.reserve}</span>
+              </div>
+            </div>
+            <div class="pd-weapon-svg-wrap">${weaponSvg}</div>
+            <div class="magazine-bullet-track">
+              <div class="magazine-bullet-fill" style="width:${weapon.clipMax > 0 ? Math.min(100, (weapon.clip / weapon.clipMax) * 100) : 100}%"></div>
+            </div>
+          </div>
+
+          <div class="pd-weapon-showcase" style="padding:10px 14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div>
+                <div class="pd-module-sub">SECONDARY SIDEARM</div>
+                <div style="font-family:var(--font-display); font-size:22px; font-weight:800;">${sidearm.name} <span style="font-family:var(--font-mono); font-size:11px; color:var(--squad-accent);">// ${sidearm.skin || 'ISSUE'}</span></div>
+              </div>
+              <div style="width:120px; height:38px; display:flex; align-items:center; justify-content:center;">${sidearmSvg}</div>
+              <div style="font-family:var(--font-mono); font-size:20px; font-weight:800;">${sidearm.clip} <span style="font-size:12px; color:var(--text-secondary);">/ ${sidearm.reserve}</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="pd-module-sub" style="margin-bottom:6px;">TACTICAL UTILITY &amp; ECONOMY</div>
+            <div class="utility-belt-row" style="margin-bottom:10px;">
+              ${grenadeBeltHtml}
+              ${gearSlotHtml}
+            </div>
+            <div class="economy-telemetry-row">
+              <div class="player-cash-block">
+                <span class="cash-label">PLAYER BANK</span>
+                <span class="cash-amount">${formatMoney(p.money)}</span>
+              </div>
+              <div class="equip-val-block">
+                EQUIPMENT VALUE <strong>${formatMoney(p.equipValue)}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: PRO ANALYTICS MATRIX, ROUND DAMAGE CHART & PERSONAL COMBAT LOG -->
+      <div class="pd-column">
+        <div class="pd-module">
+          <div class="pd-module-header">
+            <span class="pd-module-title">PRO COMBAT TELEMETRY MATRIX</span>
+            <span class="pd-module-sub">HLTV-STYLE IMPACT RATING ${rating2}</span>
+          </div>
+          <div class="pd-stats-grid-8">
+            <div class="pd-stat-card accent">
+              <span class="pd-stat-label">KILLS</span>
+              <span class="pd-stat-val">${p.kills}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">DEATHS</span>
+              <span class="pd-stat-val">${p.deaths}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">ASSISTS</span>
+              <span class="pd-stat-val">${p.assists}</span>
+            </div>
+            <div class="pd-stat-card accent">
+              <span class="pd-stat-label">K/D RATIO</span>
+              <span class="pd-stat-val">${kdRatio}</span>
+            </div>
+            <div class="pd-stat-card accent">
+              <span class="pd-stat-label">ADR</span>
+              <span class="pd-stat-val">${p.adr}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">HEADSHOT %</span>
+              <span class="pd-stat-val">${p.hsPercent}%</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">KPR</span>
+              <span class="pd-stat-val">${kpr}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">SURVIVAL</span>
+              <span class="pd-stat-val">${survivalPct}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pd-module fill-space">
+          <div class="pd-module-header">
+            <span class="pd-module-title">ROUND-BY-ROUND DAMAGE OUTPUT</span>
+            <span class="pd-module-sub">CURRENT ROUND: ${p.roundDamage} DMG (${p.roundKills}K)</span>
+          </div>
+          <div class="pd-round-bars">
+            ${roundBarsHtml}
+          </div>
+
+          <div style="margin-top:8px;">
+            <div class="pd-module-header" style="margin-bottom:8px;">
+              <span class="pd-module-title" style="font-size:18px;">RECENT ENGAGEMENT LOG</span>
+              <span class="pd-module-sub">LIVE KILLFEED STREAM</span>
+            </div>
+            <div class="pd-kill-log-list">
+              ${killLogHtml}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderAll() {
   renderTopHeader();
   renderKillfeed();
   renderPlayersStage();
+  renderUltrawideWing();
+  renderPlayerDetailView();
 }
 
 /* ==========================================================================
@@ -1141,6 +1640,9 @@ function initRosterEditor() {
           <label for="t-bg-select-${idx}">T LOBBY SKIN (1-11)</label>
           <select id="t-bg-select-${idx}">${tBgOptions}</select>
         </div>
+        <a href="/player.html?slot=${idx + 1}" target="_blank" rel="noopener" class="ctrl-btn" style="text-decoration:none; justify-content:center; margin-top:2px; font-size:10px;">
+          OPEN /player.html?slot=${idx + 1} &#8599;
+        </a>
       </div>
     `;
   }).join('');
@@ -1220,10 +1722,18 @@ function shuffleAllCardSkins() {
 function bindControls() {
   const modal = document.getElementById('gsi-modal');
 
-  // Delegate clicks on player card callsigns or skin cyclers
+  // Delegate clicks on player card callsigns, inspect links, or skin cyclers
   const stageGrid = document.getElementById('players-stage-grid');
   if (stageGrid) {
     stageGrid.addEventListener('click', (e) => {
+      const openPlayerEl = e.target.closest('[data-open-player]');
+      if (openPlayerEl) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        const idx = Number(openPlayerEl.getAttribute('data-open-player')) || 0;
+        openPlayerDetailView(idx);
+        return;
+      }
       const callsignEl = e.target.closest('[data-edit-callsign]');
       if (callsignEl) {
         const idx = Number(callsignEl.getAttribute('data-edit-callsign'));
@@ -1236,6 +1746,62 @@ function bindControls() {
       if (cycleEl) {
         const idx = Number(cycleEl.getAttribute('data-cycle-bg'));
         cyclePlayerCardSkin(idx);
+      }
+    });
+  }
+
+  // Delegate clicks inside 32:9 Ultrawide Tactical Wing
+  const uwWing = document.getElementById('ultrawide-tactical-wing');
+  if (uwWing) {
+    uwWing.addEventListener('click', (e) => {
+      const openPlayerEl = e.target.closest('[data-open-player]');
+      if (openPlayerEl) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        const idx = Number(openPlayerEl.getAttribute('data-open-player')) || 0;
+        openPlayerDetailView(idx);
+      }
+    });
+  }
+
+  // Delegate clicks inside Individual Player Deep-Dive View
+  const detailView = document.getElementById('player-detail-view');
+  if (detailView) {
+    detailView.addEventListener('click', (e) => {
+      const backBtn = e.target.closest('[data-back-squad]');
+      if (backBtn) {
+        setSquadView();
+        return;
+      }
+      const selectBtn = e.target.closest('[data-select-player]');
+      if (selectBtn) {
+        const idx = Number(selectBtn.getAttribute('data-select-player')) || 0;
+        openPlayerDetailView(idx);
+        return;
+      }
+      const cycleBtn = e.target.closest('[data-cycle-bg]');
+      if (cycleBtn) {
+        const idx = Number(cycleBtn.getAttribute('data-cycle-bg')) || 0;
+        cyclePlayerCardSkin(idx);
+        return;
+      }
+      const editCallsign = e.target.closest('[data-edit-callsign]');
+      if (editCallsign) {
+        const idx = Number(editCallsign.getAttribute('data-edit-callsign')) || 0;
+        modal.classList.add('open');
+        const inp = document.getElementById(`callsign-input-${idx}`);
+        if (inp) { inp.focus(); inp.select(); }
+      }
+    });
+  }
+
+  const btnPlayerView = document.getElementById('btn-toggle-player-view');
+  if (btnPlayerView) {
+    btnPlayerView.addEventListener('click', () => {
+      if (appState.viewMode === 'player') {
+        setSquadView();
+      } else {
+        openPlayerDetailView(appState.selectedPlayerIdx || 0);
       }
     });
   }
@@ -1333,13 +1899,20 @@ function bindControls() {
     setTimeout(() => { e.target.textContent = 'COPY .CFG'; }, 1500);
   });
 
-  document.getElementById('btn-fullscreen').addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
+  // Bind 1080p, 1440p, and 5120x1440 Fullscreen buttons
+  document.querySelectorAll('.res-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const resMode = btn.getAttribute('data-res') || '1080p';
+      setDisplayResolution(resMode, true);
+    });
   });
+
+  const legacyFsBtn = document.getElementById('btn-fullscreen');
+  if (legacyFsBtn) {
+    legacyFsBtn.addEventListener('click', () => {
+      setDisplayResolution(appState.displayRes || '1080p', true);
+    });
+  }
 }
 
 // Boot Dashboard

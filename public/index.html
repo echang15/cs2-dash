@@ -128,13 +128,22 @@
           <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
           <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
           <button type="button" class="ctrl-btn" id="btn-shuffle-bgs" title="Cycle/Shuffle Player Card Lobby Backgrounds (11 CT & 11 T Skins)">SHUFFLE SKINS</button>
+          <button type="button" class="ctrl-btn" id="btn-toggle-player-view" title="Switch to Individual Player Deep-Dive View (or open /player.html?slot=1)">PLAYER VIEW</button>
           <button type="button" class="ctrl-btn" id="btn-open-gsi">TEAMS &amp; GSI .CFG</button>
-          <button type="button" class="ctrl-btn" id="btn-fullscreen">1080P FULLSCREEN</button>
+          <div class="res-fullscreen-group" role="group" aria-label="Display Resolution and Fullscreen Modes">
+            <button type="button" class="ctrl-btn res-btn active" data-res="1080p" id="btn-fs-1080p" title="1920x1080 (16:9 HD) Fullscreen">1080P FS</button>
+            <button type="button" class="ctrl-btn res-btn" data-res="1440p" id="btn-fs-1440p" title="2560x1440 (16:9 QHD) Fullscreen">1440P FS</button>
+            <button type="button" class="ctrl-btn res-btn" data-res="5120x1440" id="btn-fs-5120" title="5120x1440 (32:9 Super Ultrawide) Fullscreen">5120x1440 FS</button>
+          </div>
         </div>
       </nav>
 
-      <!-- 3. DYNAMIC 1-TO-5 FULL-HEIGHT STADIUM PLAYER CARDS -->
-      <section class="players-stage-grid" id="players-stage-grid" aria-label="Human Squad Player Cards"></section>
+      <!-- 3. MAIN BROADCAST STAGE BODY (5-PLAYER CARDS + 32:9 ULTRAWIDE WING + INDIVIDUAL PLAYER DEEP-DIVE VIEW) -->
+      <div class="stage-main-area" id="stage-main-area">
+        <section class="players-stage-grid" id="players-stage-grid" aria-label="Human Squad Player Cards"></section>
+        <aside class="ultrawide-tactical-wing" id="ultrawide-tactical-wing" aria-label="32:9 Super Ultrawide Extended Telemetry"></aside>
+        <section class="player-detail-view" id="player-detail-view" aria-label="Individual Player Deep-Dive Telemetry"></section>
+      </div>
 
     </div>
   </main>
@@ -143,7 +152,7 @@
   <div class="modal-backdrop" id="gsi-modal" role="dialog" aria-modal="true" aria-labelledby="gsi-modal-title">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h2 class="modal-title" id="gsi-modal-title">TEAM NAMES, CARD SKINS &amp; CS2 GSI SETUP</h2>
+        <h2 class="modal-title" id="gsi-modal-title">TEAM NAMES, CARD SKINS, PLAYER URLS &amp; CS2 GSI SETUP</h2>
         <button type="button" class="ctrl-btn" id="btn-close-gsi">CLOSE [ESC]</button>
       </div>
 
@@ -169,7 +178,7 @@
       </div>
 
       <div>
-        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS &amp; LOBBY BACKGROUNDS (11 CT &amp; 11 T SKINS — CLICK CARD PORTRAIT AREA TO CYCLE)</h4>
+        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS, LOBBY BACKGROUNDS &amp; INDIVIDUAL PLAYER URLS</h4>
         <div class="roster-editor-grid" id="roster-editor-grid"></div>
       </div>
 
