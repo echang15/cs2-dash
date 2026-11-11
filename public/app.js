@@ -516,11 +516,6 @@ function renderPlayersStage() {
       </div>`;
     }
 
-    // Round kill diamonds (1K to 5K)
-    const rkDiamonds = [1, 2, 3, 4, 5].map(k =>
-      `<span class="rk-diamond ${p.roundKills >= k ? 'earned' : ''}" title="${p.roundKills} Round Kills"></span>`
-    ).join('');
-
     // Status pills
     const statusPills = [];
     if (!isAlive) {
@@ -541,17 +536,32 @@ function renderPlayersStage() {
     const activeBgId = currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1);
     const bgUrl = getCardBackgroundUrl(currentSide, activeBgId);
 
+    const now = Date.now();
+    const celeb = appState.killCelebrations[idx];
+    const isKillFlash = Boolean(celeb && isAlive && now < celeb.expiresAt);
+    const killAnimDelayMs = isKillFlash ? Math.max(0, now - celeb.startedAt) : 0;
+
+    const killBannerHtml = isKillFlash ? `
+      <div class="kill-flash-banner" aria-live="polite">
+        <div class="kill-flash-top-line">
+          <span class="kill-flash-icon">&#9760;</span>
+          <span class="kill-flash-headline">${celeb.headline}</span>
+          ${celeb.isHs ? `<span class="kill-flash-hs-pill">HEADSHOT</span>` : ''}
+        </div>
+        <div class="kill-flash-sub-line">
+          <span>${celeb.weaponName}</span>
+          <span>&bull;</span>
+          <span>FRAGGED ${celeb.victim}</span>
+        </div>
+      </div>
+    ` : '';
+
     return `
-      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''}" id="player-card-${idx + 1}" style="--card-model-bg: url('${bgUrl}');">
+      <article class="player-stadium-card ${sideClass} ${!isAlive ? 'is-dead' : ''} ${isLowHp ? 'low-health' : ''} ${isFlashed ? 'is-flashed' : ''} ${isBurning ? 'is-burning' : ''} ${isKillFlash ? 'is-kill-flash' : ''}" id="player-card-${idx + 1}" style="--card-model-bg: url('${bgUrl}'); --kill-anim-delay: -${killAnimDelayMs}ms;">
+        ${killBannerHtml}
         
         <!-- ZONE 1: OPERATOR IDENTITY & STATUS -->
         <div class="card-zone-identity">
-          <div class="operator-top-row">
-            <span class="slot-index-tag" data-cycle-bg="${idx}" title="Click to cycle ${currentSide} Card Skin (#${String(activeBgId).padStart(2, '0')} / 11)" style="cursor:pointer;">OP // 0${idx + 1} &bull; SKIN ${String(activeBgId).padStart(2, '0')}</span>
-            <span class="role-badge" data-edit-role="${idx}" title="Click to change player role">${p.role || slotCfg.role}</span>
-            <div class="round-kills-pips" title="Round Kills: ${p.roundKills}">${rkDiamonds}</div>
-          </div>
-
           <div class="operator-hero-row">
             <div class="operator-name-block">
               <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign" style="cursor:pointer;">${p.name}</h2>
