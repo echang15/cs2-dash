@@ -1564,6 +1564,15 @@ html, body {
 .roster-editor-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.roster-slot-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -1577,13 +1586,22 @@ html, body {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
+  letter-spacing: 0.05em;
 }
 
-.roster-input-group input {
+.roster-input-group input,
+.roster-input-group select {
   background: #070a10;
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   padding: 6px 8px;
+  width: 100%;
+}
+
+.roster-input-group input:focus,
+.roster-input-group select:focus {
+  outline: none;
+  border-color: var(--squad-accent);
 }

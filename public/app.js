@@ -986,12 +986,47 @@ function updateGsiConfigModalText() {
   if (box) box.textContent = cfgText;
 }
 
+const ROLE_PRESETS = [
+  'ENTRY // RIFLER',
+  'AWP SPECIALIST',
+  'IN-GAME LEADER',
+  'SITE ANCHOR',
+  'LURK // CLUTCH',
+  'SUPPORT // UTIL',
+  'SECOND ENTRY',
+  'PACK LEADER',
+  'BOT SLAYER'
+];
+
+function saveCustomRoster() {
+  try {
+    localStorage.setItem('cs2_custom_roster', JSON.stringify(appState.customCallsigns));
+  } catch (_) {}
+}
+
 function initRosterEditor() {
   try {
     const savedHuman = localStorage.getItem('cs2_human_team_name');
     const savedBot = localStorage.getItem('cs2_bot_team_name');
     if (savedHuman) appState.humanTeamName = savedHuman;
     if (savedBot) appState.botTeamName = savedBot;
+
+    const savedRoster = localStorage.getItem('cs2_custom_roster');
+    if (savedRoster) {
+      const parsed = JSON.parse(savedRoster);
+      if (Array.isArray(parsed) && parsed.length === 5) {
+        appState.customCallsigns = parsed.map((item, i) => ({
+          name: item.name || DEFAULT_CALLSIGNS[i].name,
+          role: item.role || DEFAULT_CALLSIGNS[i].role
+        }));
+        appState.players.forEach((p, i) => {
+          if (appState.customCallsigns[i]) {
+            if (appState.mode === 'simulation') p.name = appState.customCallsigns[i].name;
+            p.role = appState.customCallsigns[i].role;
+          }
+        });
+      }
+    }
   } catch (_) {}
 
   const humanInput = document.getElementById('input-human-team-name');
@@ -1014,21 +1049,72 @@ function initRosterEditor() {
   }
 
   const grid = document.getElementById('roster-editor-grid');
-  grid.innerHTML = appState.customCallsigns.map((c, idx) => `
-    <div class="roster-input-group">
-      <label for="callsign-input-${idx}">OPERATOR 0${idx + 1}</label>
-      <input type="text" id="callsign-input-${idx}" value="${c.name}" maxlength="14" />
-    </div>
-  `).join('');
+  grid.innerHTML = appState.customCallsigns.map((c, idx) => {
+    const presetOptions = ROLE_PRESETS.map(r =>
+      `<option value="${r}" ${c.role === r ? 'selected' : ''}>${r}</option>`
+    ).join('');
+    const isCustomRole = !ROLE_PRESETS.includes(c.role);
+
+    return `
+      <div class="roster-slot-card">
+        <div class="roster-input-group">
+          <label for="callsign-input-${idx}">OPERATOR 0${idx + 1} CALLSIGN</label>
+          <input type="text" id="callsign-input-${idx}" value="${c.name}" maxlength="14" />
+        </div>
+        <div class="roster-input-group">
+          <label for="role-preset-${idx}">ROLE PRESET</label>
+          <select id="role-preset-${idx}">
+            ${presetOptions}
+            <option value="__CUSTOM__" ${isCustomRole ? 'selected' : ''}>CUSTOM ROLE...</option>
+          </select>
+        </div>
+        <div class="roster-input-group">
+          <label for="role-input-${idx}">ROLE TITLE</label>
+          <input type="text" id="role-input-${idx}" value="${c.role}" maxlength="20" placeholder="e.g. AWP SPECIALIST" />
+        </div>
+      </div>
+    `;
+  }).join('');
 
   appState.customCallsigns.forEach((_, idx) => {
-    const input = document.getElementById(`callsign-input-${idx}`);
-    input.addEventListener('input', (e) => {
+    const nameInput = document.getElementById(`callsign-input-${idx}`);
+    const rolePreset = document.getElementById(`role-preset-${idx}`);
+    const roleInput = document.getElementById(`role-input-${idx}`);
+
+    nameInput.addEventListener('input', (e) => {
       const val = e.target.value.trim().toUpperCase() || `OP 0${idx + 1}`;
       appState.customCallsigns[idx].name = val;
       if (appState.players[idx]) {
         appState.players[idx].name = val;
       }
+      saveCustomRoster();
+      renderAll();
+    });
+
+    rolePreset.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      if (selected === '__CUSTOM__') {
+        roleInput.focus();
+        roleInput.select();
+        return;
+      }
+      roleInput.value = selected;
+      appState.customCallsigns[idx].role = selected;
+      if (appState.players[idx]) {
+        appState.players[idx].role = selected;
+      }
+      saveCustomRoster();
+      renderAll();
+    });
+
+    roleInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim().toUpperCase() || 'OPERATOR';
+      appState.customCallsigns[idx].role = val;
+      if (appState.players[idx]) {
+        appState.players[idx].role = val;
+      }
+      rolePreset.value = ROLE_PRESETS.includes(val) ? val : '__CUSTOM__';
+      saveCustomRoster();
       renderAll();
     });
   });
@@ -1036,6 +1122,28 @@ function initRosterEditor() {
 
 function bindControls() {
   const modal = document.getElementById('gsi-modal');
+
+  // Delegate clicks on player card role badges or callsigns to open modal & focus input
+  const stageGrid = document.getElementById('players-stage-grid');
+  if (stageGrid) {
+    stageGrid.addEventListener('click', (e) => {
+      const roleEl = e.target.closest('[data-edit-role]');
+      if (roleEl) {
+        const idx = Number(roleEl.getAttribute('data-edit-role'));
+        modal.classList.add('open');
+        const inp = document.getElementById(`role-input-${idx}`);
+        if (inp) { inp.focus(); inp.select(); }
+        return;
+      }
+      const callsignEl = e.target.closest('[data-edit-callsign]');
+      if (callsignEl) {
+        const idx = Number(callsignEl.getAttribute('data-edit-callsign'));
+        modal.classList.add('open');
+        const inp = document.getElementById(`callsign-input-${idx}`);
+        if (inp) { inp.focus(); inp.select(); }
+      }
+    });
+  }
 
   const btnPause = document.getElementById('btn-toggle-sim');
   btnPause.addEventListener('click', () => {
