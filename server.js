@@ -255,28 +255,37 @@ function handleGsiPayload(payload) {
     gsiStore.ingestionMode = 'spectator_allplayers';
     const entries = Object.entries(payload.allplayers);
 
-    // Separate human players from bots (bots in CS2 GSI often have BOT prefix or numeric/synthetic SteamIDs, or 5-player side vs 10-player side)
     const teamCounts = { CT: [], T: [] };
     for (const [sid, p] of entries) {
       const team = p.team === 'T' ? 'T' : 'CT';
       teamCounts[team].push([sid, p]);
     }
 
-    // In 5v10, the side with <= 5 players (or non-BOT names) is the human squad
+    // Determine human side (side with real SteamID64 players or <= 5 players vs bot swarm)
     let humanSide = gsiStore.humanTeamSide;
-    if (teamCounts.CT.length > 0 && teamCounts.T.length > 0) {
-      if (teamCounts.CT.length <= 5 && teamCounts.T.length > 5) {
+    const ctHumans = teamCounts.CT.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !/^BOT\s/i.test(p.name || ''));
+    const tHumans = teamCounts.T.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !/^BOT\s/i.test(p.name || ''));
+
+    if (ctHumans.length > 0 && tHumans.length === 0) {
+      humanSide = 'CT';
+    } else if (tHumans.length > 0 && ctHumans.length === 0) {
+      humanSide = 'T';
+    } else if (teamCounts.CT.length > 0 && teamCounts.T.length > 0) {
+      if (teamCounts.CT.length <= 5 && teamCounts.T.length > teamCounts.CT.length) {
         humanSide = 'CT';
-      } else if (teamCounts.T.length <= 5 && teamCounts.CT.length > 5) {
+      } else if (teamCounts.T.length <= 5 && teamCounts.CT.length > teamCounts.T.length) {
         humanSide = 'T';
       }
     }
     gsiStore.humanTeamSide = humanSide;
     gsiStore.botTeamSide = humanSide === 'CT' ? 'T' : 'CT';
 
-    const humanEntries = teamCounts[humanSide].slice(0, 5);
+    const rawHumanTeam = teamCounts[humanSide];
+    const filteredHumans = rawHumanTeam.filter(([sid, p]) => !/^BOT\s/i.test(p.name || ''));
+    const humanEntries = (filteredHumans.length > 0 ? filteredHumans : rawHumanTeam).slice(0, 5);
     const botEntries = teamCounts[gsiStore.botTeamSide].slice(0, 10);
 
+    gsiStore.humanPlayersMap.clear();
     humanEntries.forEach(([sid, p], idx) => {
       const normalized = normalizeGsiPlayer(sid, p, idx);
       gsiStore.humanPlayersMap.set(sid, normalized);
@@ -289,21 +298,46 @@ function handleGsiPayload(payload) {
       armor: p.state && typeof p.state.armor === 'number' ? p.state.armor : 0
     }));
   } else if (payload.player && (payload.player.steamid || payload.player.name)) {
-    // Individual player client mode (aggregates up to 5 human PCs)
+    // Individual player client mode (aggregates 1 to 5 human PCs dynamically)
     if (gsiStore.ingestionMode === 'waiting') {
       gsiStore.ingestionMode = 'multi_client';
     }
+
     const sid = payload.player.steamid || payload.player.name;
-    if (payload.player.team) {
+    const providerSid = payload.provider && payload.provider.steamid;
+    const isOwnPlayer = !providerSid || providerSid === sid;
+    const isBotPlayer = /^BOT\s/i.test(payload.player.name || '');
+
+    if (isOwnPlayer && payload.player.team) {
       gsiStore.humanTeamSide = payload.player.team;
       gsiStore.botTeamSide = payload.player.team === 'CT' ? 'T' : 'CT';
     }
-    const existingIdx = Array.from(gsiStore.humanPlayersMap.keys()).indexOf(sid);
-    const slotIdx = existingIdx >= 0 ? existingIdx : gsiStore.humanPlayersMap.size;
-    const normalized = normalizeGsiPlayer(sid, payload.player, slotIdx);
-    gsiStore.humanPlayersMap.set(sid, normalized);
 
-    // In 5-player multi-client mode (no spectator allplayers), infer remaining bots out of 10 from squad roundKills
+    // Only track human squad members (ignore bots if a dead player spectates a bot)
+    if (!isBotPlayer && (isOwnPlayer || payload.player.team === gsiStore.humanTeamSide)) {
+      // Prune stale disconnected players (> 45s without packet)
+      const now = Date.now();
+      for (const [k, v] of gsiStore.humanPlayersMap.entries()) {
+        if (now - (v.lastSeenAt || now) > 45000 && k !== sid) {
+          gsiStore.humanPlayersMap.delete(k);
+        }
+      }
+
+      const keys = Array.from(gsiStore.humanPlayersMap.keys());
+      const existingIdx = keys.indexOf(sid);
+      const slotIdx = existingIdx >= 0 ? existingIdx : gsiStore.humanPlayersMap.size;
+      if (slotIdx < 5) {
+        const normalized = normalizeGsiPlayer(sid, payload.player, slotIdx);
+        gsiStore.humanPlayersMap.set(sid, normalized);
+      }
+    }
+
+    // Re-index slots 1..N cleanly
+    Array.from(gsiStore.humanPlayersMap.values()).forEach((p, idx) => {
+      p.slot = idx + 1;
+    });
+
+    // In multi-client mode (no spectator allplayers), infer remaining bots out of 10 from squad roundKills
     const totalRoundBotKills = Array.from(gsiStore.humanPlayersMap.values())
       .slice(0, 5)
       .reduce((sum, p) => sum + (p.roundKills || 0), 0);

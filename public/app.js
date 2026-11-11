@@ -124,6 +124,10 @@ const appState = {
   roundPhase: 'live', // 'freezetime' | 'live' | 'planted' | 'over'
   roundTimeLeft: 74.0,
   bombTimeLeft: 40.0,
+  humanTeamName: 'APEX VANGUARD',
+  botTeamName: 'BOT SWARM (10)',
+  targetSquadSize: 5,
+  lastKillfeedSig: '',
   calloutText: 'STADIUM TELEMETRY LOCKED // 5 HUMANS VS 10 BOTS',
   calloutHighlight: false,
   customCallsigns: DEFAULT_CALLSIGNS.map(c => ({ ...c })),
@@ -135,7 +139,7 @@ const appState = {
   port: window.location.port || '3000'
 };
 
-function createInitialSimSquad(side = 'CT') {
+function createInitialSimSquad(side = 'CT', count = appState.targetSquadSize) {
   const isCT = side === 'CT';
   const loadouts = [
     {
@@ -194,7 +198,8 @@ function createInitialSimSquad(side = 'CT') {
     }
   ];
 
-  return loadouts.map((item, idx) => ({
+  const safeCount = Math.max(1, Math.min(5, count || 5));
+  return loadouts.slice(0, safeCount).map((item, idx) => ({
     id: `sim-human-${idx + 1}`,
     slot: idx + 1,
     name: appState.customCallsigns[idx].name,
@@ -204,7 +209,7 @@ function createInitialSimSquad(side = 'CT') {
     armor: idx === 3 ? 82 : 100,
     helmet: true,
     defuseKit: isCT,
-    hasC4: !isCT && idx === 2,
+    hasC4: !isCT && idx === Math.min(2, safeCount - 1),
     flashed: 0,
     burning: 0,
     reloading: false,
@@ -250,13 +255,13 @@ function pushKillfeedEvent(attacker, attackerType, weaponName, victim, victimTyp
 }
 
 function initSimulationState() {
-  appState.players = createInitialSimSquad(appState.humanSide);
+  appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
   appState.bots = createInitialBotSwarm();
   appState.damageTrails = appState.players.map(p => p.health);
   appState.killfeed = [
     {
       id: 'kf-1',
-      attacker: appState.customCallsigns[1].name,
+      attacker: appState.customCallsigns[Math.min(1, appState.players.length - 1)].name,
       attackerType: 'human',
       weaponName: 'AWP',
       victim: 'BOT VLADIMIR',
@@ -308,13 +313,26 @@ function renderTopHeader() {
   const isCT = appState.humanSide === 'CT';
   document.body.className = isCT ? 'human-side-ct' : 'human-side-t';
 
+  const squadCount = Math.max(1, appState.players.length);
+  const botCount = appState.bots.length || 10;
+  document.documentElement.style.setProperty('--active-player-count', String(squadCount));
+
   document.getElementById('human-faction-code').textContent = appState.humanSide;
+  const stackSubEl = document.getElementById('human-stack-sub');
+  if (stackSubEl) stackSubEl.textContent = squadCount === 1 ? 'SOLO' : `${squadCount} STACK`;
+
   document.getElementById('human-side-pill').textContent = isCT ? 'COUNTER-TERRORISTS' : 'TERRORISTS';
   document.getElementById('bot-faction-code').textContent = appState.botSide;
   document.getElementById('bot-side-pill').textContent = isCT ? 'TERRORISTS' : 'COUNTER-TERRORISTS';
 
+  document.getElementById('human-team-name').textContent = appState.humanTeamName;
+  document.getElementById('bot-team-name').textContent = appState.botTeamName;
+
   document.getElementById('human-score').textContent = appState.humanScore;
   document.getElementById('bot-score').textContent = appState.botScore;
+
+  const squadBtn = document.getElementById('btn-squad-size');
+  if (squadBtn) squadBtn.textContent = `SQUAD: ${squadCount}v${botCount}`;
 
   // Team economy totals
   const totalBank = appState.players.reduce((acc, p) => acc + (p.money || 0), 0);
@@ -322,9 +340,9 @@ function renderTopHeader() {
   document.getElementById('human-team-bank').textContent = formatMoney(totalBank);
   document.getElementById('human-team-equip').textContent = formatMoney(totalEquip);
 
-  // Human 5-player alive pips
+  // Human N-player alive pips
   const humansAlive = appState.players.filter(p => p.health > 0).length;
-  document.getElementById('human-alive-text').textContent = `${humansAlive} / 5`;
+  document.getElementById('human-alive-text').textContent = `${humansAlive} / ${squadCount}`;
   const humanPipsEl = document.getElementById('human-alive-pips');
   humanPipsEl.innerHTML = appState.players.map(p => {
     const aliveClass = p.health <= 0 ? 'dead' : p.health <= 25 ? 'alive low-hp' : 'alive';
@@ -336,7 +354,7 @@ function renderTopHeader() {
   // Bot 10-unit swarm matrix
   const botsAlive = appState.bots.filter(b => b.health > 0).length;
   const botTotalHp = appState.bots.reduce((acc, b) => acc + Math.max(0, b.health), 0);
-  document.getElementById('bot-alive-text').textContent = `${botsAlive} / 10`;
+  document.getElementById('bot-alive-text').textContent = `${botsAlive} / ${botCount}`;
   document.getElementById('bot-total-hp').textContent = `${botTotalHp} HP`;
   document.getElementById('bot-threat-level').textContent =
     botsAlive >= 7 ? 'SWARM SURGE' : botsAlive >= 4 ? 'CONTESTED' : botsAlive > 0 ? 'DEPLETED' : 'WIPED';
@@ -356,7 +374,7 @@ function renderTopHeader() {
   const trackFill = document.getElementById('timer-track-fill');
   const defuseHint = document.getElementById('defuse-hint-label');
 
-  document.getElementById('map-badge').textContent = `${appState.mapName.toUpperCase()} // 5v10`;
+  document.getElementById('map-badge').textContent = `${appState.mapName.toUpperCase()} // ${squadCount}v${botCount}`;
   document.getElementById('round-number-badge').textContent = `ROUND ${appState.roundNumber} / 24`;
 
   if (appState.roundPhase === 'planted') {
@@ -391,6 +409,10 @@ function renderTopHeader() {
 }
 
 function renderKillfeed() {
+  const sig = appState.killfeed.map(k => k.id).join('|');
+  if (sig === appState.lastKillfeedSig) return;
+  appState.lastKillfeedSig = sig;
+
   const container = document.getElementById('killfeed-items');
   container.innerHTML = appState.killfeed.map(item => `
     <div class="kill-pill">
@@ -801,7 +823,7 @@ function triggerNewRound() {
   appState.roundPhase = 'live';
   appState.roundTimeLeft = 115.0;
   appState.bombTimeLeft = 40.0;
-  appState.players = createInitialSimSquad(appState.humanSide);
+  appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
   appState.players.forEach(p => {
     p.health = 100;
     p.armor = 100;
@@ -814,8 +836,8 @@ function triggerNewRound() {
     health: 100,
     armor: 100
   }));
-  appState.damageTrails = [100, 100, 100, 100, 100];
-  appState.calloutText = `ROUND ${appState.roundNumber} STARTED // FULL BUY 5 HUMANS VS 10 BOTS`;
+  appState.damageTrails = appState.players.map(() => 100);
+  appState.calloutText = `ROUND ${appState.roundNumber} STARTED // FULL BUY ${appState.players.length} HUMANS VS ${appState.bots.length} BOTS`;
   appState.calloutHighlight = false;
   renderAll();
 }
@@ -823,9 +845,25 @@ function triggerNewRound() {
 function triggerSwapSides() {
   appState.humanSide = appState.humanSide === 'CT' ? 'T' : 'CT';
   appState.botSide = appState.humanSide === 'CT' ? 'T' : 'CT';
-  appState.players = createInitialSimSquad(appState.humanSide);
-  appState.calloutText = `FACTION SWAP // HUMAN SQUAD NOW ON ${appState.humanSide === 'CT' ? 'COUNTER-TERRORIST' : 'TERRORIST'} SIDE`;
+  appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
+  appState.calloutText = `FACTION SWAP // ${appState.humanTeamName} NOW ON ${appState.humanSide === 'CT' ? 'COUNTER-TERRORIST' : 'TERRORIST'} SIDE`;
   appState.calloutHighlight = false;
+  renderAll();
+}
+
+function setSquadSize(newSize) {
+  const count = Math.max(1, Math.min(5, Number(newSize) || 5));
+  appState.targetSquadSize = count;
+  appState.players = createInitialSimSquad(appState.humanSide, count);
+  appState.damageTrails = appState.players.map(p => p.health);
+  appState.calloutText = `SQUAD FORMAT UPDATED // ${count} HUMANS VS 10 BOTS (${count}v10)`;
+  appState.calloutHighlight = false;
+
+  const modalBtns = document.querySelectorAll('#modal-squad-size-btns button');
+  modalBtns.forEach(btn => {
+    btn.classList.toggle('active', Number(btn.getAttribute('data-size')) === count);
+  });
+
   renderAll();
 }
 
@@ -838,12 +876,13 @@ function applyServerGsiState(serverState) {
   }
 
   appState.mode = 'gsi';
+  const detectedCount = Math.max(1, Math.min(5, serverState.humanPlayers.length));
   const badge = document.getElementById('gsi-source-badge');
   const badgeText = document.getElementById('gsi-source-text');
   badge.classList.add('gsi-live');
   badgeText.textContent = serverState.ingestionMode === 'spectator_allplayers'
-    ? 'CS2 GSI LIVE (SPECTATOR)'
-    : `CS2 GSI LIVE (${serverState.humanPlayers.length}/5 PCs)`;
+    ? `CS2 GSI LIVE (${detectedCount}v${(serverState.bots && serverState.bots.length) || 10} SPECTATOR)`
+    : `CS2 GSI LIVE (${detectedCount} PC${detectedCount > 1 ? 's' : ''} DETECTED)`;
 
   appState.humanSide = serverState.humanTeamSide || 'CT';
   appState.botSide = serverState.botTeamSide || 'T';
@@ -869,23 +908,21 @@ function applyServerGsiState(serverState) {
     }
   }
 
-  // Merge up to 5 human players (filling any missing slots cleanly)
-  const mergedPlayers = createInitialSimSquad(appState.humanSide);
-  serverState.humanPlayers.slice(0, 5).forEach((gp, idx) => {
-    mergedPlayers[idx] = {
-      ...mergedPlayers[idx],
-      ...gp,
-      role: appState.customCallsigns[idx].role
-    };
-  });
-  appState.players = mergedPlayers;
+  // Dynamically adapt to the exact number of detected human players (e.g. 2v10, 3v10, 5v10)
+  const baseDefaults = createInitialSimSquad(appState.humanSide, 5);
+  appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => ({
+    ...baseDefaults[idx],
+    ...gp,
+    role: (appState.customCallsigns[idx] && appState.customCallsigns[idx].role) || 'OPERATOR'
+  }));
+  appState.targetSquadSize = appState.players.length;
+
+  while (appState.damageTrails.length < appState.players.length) {
+    appState.damageTrails.push(100);
+  }
 
   if (serverState.bots && serverState.bots.length > 0) {
-    const paddedBots = createInitialBotSwarm();
-    serverState.bots.slice(0, 10).forEach((b, idx) => {
-      paddedBots[idx] = b;
-    });
-    appState.bots = paddedBots;
+    appState.bots = serverState.bots.slice(0, 10);
   }
 
   if (serverState.bannerAlert && serverState.bannerAlert.title) {
@@ -950,6 +987,32 @@ function updateGsiConfigModalText() {
 }
 
 function initRosterEditor() {
+  try {
+    const savedHuman = localStorage.getItem('cs2_human_team_name');
+    const savedBot = localStorage.getItem('cs2_bot_team_name');
+    if (savedHuman) appState.humanTeamName = savedHuman;
+    if (savedBot) appState.botTeamName = savedBot;
+  } catch (_) {}
+
+  const humanInput = document.getElementById('input-human-team-name');
+  const botInput = document.getElementById('input-bot-team-name');
+  if (humanInput) {
+    humanInput.value = appState.humanTeamName;
+    humanInput.addEventListener('input', (e) => {
+      appState.humanTeamName = e.target.value.trim().toUpperCase() || 'HUMAN SQUAD';
+      try { localStorage.setItem('cs2_human_team_name', appState.humanTeamName); } catch (_) {}
+      renderAll();
+    });
+  }
+  if (botInput) {
+    botInput.value = appState.botTeamName;
+    botInput.addEventListener('input', (e) => {
+      appState.botTeamName = e.target.value.trim().toUpperCase() || 'BOT SWARM';
+      try { localStorage.setItem('cs2_bot_team_name', appState.botTeamName); } catch (_) {}
+      renderAll();
+    });
+  }
+
   const grid = document.getElementById('roster-editor-grid');
   grid.innerHTML = appState.customCallsigns.map((c, idx) => `
     <div class="roster-input-group">
@@ -972,6 +1035,8 @@ function initRosterEditor() {
 }
 
 function bindControls() {
+  const modal = document.getElementById('gsi-modal');
+
   const btnPause = document.getElementById('btn-toggle-sim');
   btnPause.addEventListener('click', () => {
     appState.mode = 'simulation';
@@ -979,6 +1044,40 @@ function bindControls() {
     btnPause.textContent = appState.simPaused ? 'RESUME SIM' : 'PAUSE SIM';
     btnPause.classList.toggle('active', !appState.simPaused);
   });
+
+  const btnSquadSize = document.getElementById('btn-squad-size');
+  if (btnSquadSize) {
+    btnSquadSize.addEventListener('click', () => {
+      const cycleMap = { 5: 2, 2: 3, 3: 4, 4: 5, 1: 2 };
+      const nextSize = cycleMap[appState.players.length] || 5;
+      setSquadSize(nextSize);
+    });
+  }
+
+  document.querySelectorAll('#modal-squad-size-btns button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const size = Number(btn.getAttribute('data-size')) || 5;
+      setSquadSize(size);
+    });
+  });
+
+  // Click team names on scoreboard header to open team name editor
+  const humanTitleEl = document.getElementById('human-team-name');
+  if (humanTitleEl) {
+    humanTitleEl.addEventListener('click', () => {
+      modal.classList.add('open');
+      const inp = document.getElementById('input-human-team-name');
+      if (inp) { inp.focus(); inp.select(); }
+    });
+  }
+  const botTitleEl = document.getElementById('bot-team-name');
+  if (botTitleEl) {
+    botTitleEl.addEventListener('click', () => {
+      modal.classList.add('open');
+      const inp = document.getElementById('input-bot-team-name');
+      if (inp) { inp.focus(); inp.select(); }
+    });
+  }
 
   document.getElementById('btn-sim-firefight').addEventListener('click', () => {
     triggerFirefightStep(true);
@@ -1004,7 +1103,6 @@ function bindControls() {
     triggerSwapSides();
   });
 
-  const modal = document.getElementById('gsi-modal');
   document.getElementById('btn-open-gsi').addEventListener('click', () => {
     updateGsiConfigModalText();
     modal.classList.add('open');

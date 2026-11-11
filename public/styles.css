@@ -634,18 +634,6 @@ html, body {
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
-  animation: slideInKill 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideInKill {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .kill-attacker.human, .kill-victim.human {
@@ -734,11 +722,12 @@ html, body {
 }
 
 /* ==========================================================================
-   3. 5-PLAYER FULL-HEIGHT STADIUM CARDS STAGE
+   3. DYNAMIC 1-TO-5 PLAYER FULL-HEIGHT STADIUM CARDS STAGE
    ========================================================================== */
 .players-stage-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--active-player-count, 5), minmax(320px, 520px));
+  justify-content: center;
   gap: 14px;
   height: 100%;
   min-height: 0;

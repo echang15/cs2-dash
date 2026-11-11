@@ -17,7 +17,7 @@
         <section class="team-wing human-wing" id="human-wing" aria-label="Human Squad Telemetry">
           <div class="faction-emblem" id="human-faction-emblem">
             <span class="faction-code" id="human-faction-code">CT</span>
-            <span class="faction-sub">5 STACK</span>
+            <span class="faction-sub" id="human-stack-sub">5 STACK</span>
           </div>
 
           <div class="team-identity">
@@ -25,7 +25,7 @@
               <span class="wing-pill accent" id="human-side-pill">COUNTER-TERRORISTS</span>
               <span class="wing-pill">HUMAN SQUAD</span>
             </div>
-            <h1 class="team-title" id="human-team-name">APEX VANGUARD</h1>
+            <h1 class="team-title" id="human-team-name" title="Click to change Human Team Name" style="cursor:pointer;">APEX VANGUARD</h1>
             <div class="team-economy-strip">
               <span class="econ-item">BANK <strong id="human-team-bank">$21,450</strong></span>
               <span class="econ-item equip">LOADOUT <strong id="human-team-equip">$26,900</strong></span>
@@ -90,7 +90,7 @@
               <span class="wing-pill">AI OPPOSITION</span>
               <span class="wing-pill accent" id="bot-side-pill">TERRORISTS</span>
             </div>
-            <div class="team-title" id="bot-team-name">BOT SWARM (10)</div>
+            <div class="team-title" id="bot-team-name" title="Click to change Bot Team Name" style="cursor:pointer;">BOT SWARM (10)</div>
             <div class="team-economy-strip">
               <span class="econ-item">SWARM HP <strong id="bot-total-hp">1000 HP</strong></span>
               <span class="econ-item equip">THREAT <strong id="bot-threat-level">FULL FORCE</strong></span>
@@ -120,18 +120,19 @@
             <span id="gsi-source-text">SIMULATION LIVE</span>
           </div>
           <button type="button" class="ctrl-btn active" id="btn-toggle-sim">PAUSE SIM</button>
+          <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (2v10, 3v10, 4v10, 5v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
           <button type="button" class="ctrl-btn" id="btn-sim-firefight">FIREFIGHT</button>
           <button type="button" class="ctrl-btn danger" id="btn-sim-bomb">PLANT C4</button>
           <button type="button" class="ctrl-btn" id="btn-sim-flash">FLASH SQUAD</button>
           <button type="button" class="ctrl-btn" id="btn-sim-clutch">1v4 CLUTCH</button>
           <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
           <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
-          <button type="button" class="ctrl-btn" id="btn-open-gsi">GSI .CFG / ROSTER</button>
+          <button type="button" class="ctrl-btn" id="btn-open-gsi">TEAMS &amp; GSI .CFG</button>
           <button type="button" class="ctrl-btn" id="btn-fullscreen">1080P FULLSCREEN</button>
         </div>
       </nav>
 
-      <!-- 3. 5-COLUMN FULL-HEIGHT STADIUM PLAYER CARDS -->
+      <!-- 3. DYNAMIC 1-TO-5 FULL-HEIGHT STADIUM PLAYER CARDS -->
       <section class="players-stage-grid" id="players-stage-grid" aria-label="Human Squad Player Cards"></section>
 
     </div>
@@ -141,18 +142,44 @@
   <div class="modal-backdrop" id="gsi-modal" role="dialog" aria-modal="true" aria-labelledby="gsi-modal-title">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h2 class="modal-title" id="gsi-modal-title">CS2 GAME STATE INTEGRATION (GSI) &amp; SQUAD SETUP</h2>
+        <h2 class="modal-title" id="gsi-modal-title">TEAM NAMES, SQUAD SIZE &amp; CS2 GSI SETUP</h2>
         <button type="button" class="ctrl-btn" id="btn-close-gsi">CLOSE [ESC]</button>
+      </div>
+
+      <!-- Team Names & Squad Size Configuration -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:end; background:rgba(0,0,0,0.32); border:1px solid var(--border-subtle); padding:12px 14px;">
+        <div class="roster-input-group">
+          <label for="input-human-team-name">HUMAN SQUAD TEAM NAME</label>
+          <input type="text" id="input-human-team-name" value="APEX VANGUARD" maxlength="22" />
+        </div>
+        <div class="roster-input-group">
+          <label for="input-bot-team-name">BOT OPPOSITION TEAM NAME</label>
+          <input type="text" id="input-bot-team-name" value="BOT SWARM (10)" maxlength="22" />
+        </div>
+        <div class="roster-input-group">
+          <label>HUMAN PLAYERS (AUTO IN GSI)</label>
+          <div style="display:flex; gap:4px;" id="modal-squad-size-btns">
+            <button type="button" class="ctrl-btn" data-size="2">2v10</button>
+            <button type="button" class="ctrl-btn" data-size="3">3v10</button>
+            <button type="button" class="ctrl-btn" data-size="4">4v10</button>
+            <button type="button" class="ctrl-btn active" data-size="5">5v10</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS</h4>
+        <div class="roster-editor-grid" id="roster-editor-grid"></div>
       </div>
 
       <div class="modal-steps">
         <div class="step-card">
           <h4>MODE A: SINGLE SPECTATOR / OBSERVER PC</h4>
-          <p>Drop <code>gamestate_integration_cs2dash.cfg</code> into the observer PC's CS2 <code>cfg</code> folder. Spectating the 5v10 match automatically streams <code>allplayers</code> (all 5 humans + 10 bots, weapons, ammo, health, C4 timer) to this stadium screen.</p>
+          <p>Drop <code>gamestate_integration_cs2dash.cfg</code> into the observer PC's CS2 <code>cfg</code> folder. Spectating a 2v10, 3v10, or 5v10 match automatically detects the active human players and renders their cards.</p>
         </div>
         <div class="step-card">
-          <h4>MODE B: 5 PLAYER PCs (MULTI-CLIENT MERGE)</h4>
-          <p>No spectator PC? Drop the same <code>.cfg</code> file onto each of the 5 human players' PCs! The stadium server automatically merges all 5 individual player streams into the 5 hero cards in real time.</p>
+          <h4>MODE B: 2 TO 5 PLAYER PCs (MULTI-CLIENT MERGE)</h4>
+          <p>No spectator PC? Drop the <code>.cfg</code> file onto each friend's PC! Whether 2, 3, 4, or 5 friends join the server, the dashboard dynamically scales the cards to match the connected players.</p>
         </div>
       </div>
 
@@ -167,11 +194,6 @@
           </div>
         </div>
         <pre class="cfg-code-box" id="cfg-code-box"></pre>
-      </div>
-
-      <div>
-        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE 5-PLAYER STADIUM CALLSIGNS</h4>
-        <div class="roster-editor-grid" id="roster-editor-grid"></div>
       </div>
     </div>
   </div>
