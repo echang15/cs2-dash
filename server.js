@@ -302,6 +302,18 @@ function handleGsiPayload(payload) {
     const slotIdx = existingIdx >= 0 ? existingIdx : gsiStore.humanPlayersMap.size;
     const normalized = normalizeGsiPlayer(sid, payload.player, slotIdx);
     gsiStore.humanPlayersMap.set(sid, normalized);
+
+    // In 5-player multi-client mode (no spectator allplayers), infer remaining bots out of 10 from squad roundKills
+    const totalRoundBotKills = Array.from(gsiStore.humanPlayersMap.values())
+      .slice(0, 5)
+      .reduce((sum, p) => sum + (p.roundKills || 0), 0);
+    const deadBotsCount = Math.min(10, totalRoundBotKills);
+    gsiStore.bots = Array.from({ length: 10 }, (_, idx) => ({
+      id: `bot-${idx + 1}`,
+      name: `BOT ${idx + 1}`,
+      health: idx < deadBotsCount ? 0 : 100,
+      armor: idx < deadBotsCount ? 0 : 100
+    }));
   }
 
   broadcastGsiUpdate();
