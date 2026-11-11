@@ -761,7 +761,8 @@ function triggerFirefightStep(announce = true) {
 
   const attacker = aliveHumans[Math.floor(Math.random() * aliveHumans.length)];
   const targetBot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
-  const dmgToBot = 45 + Math.floor(Math.random() * 65);
+  const attackerIdx = appState.players.indexOf(attacker);
+  const dmgToBot = announce ? 100 : (45 + Math.floor(Math.random() * 65));
   targetBot.health = Math.max(0, targetBot.health - dmgToBot);
   attacker.roundDamage += Math.min(100, dmgToBot);
 
@@ -774,14 +775,21 @@ function triggerFirefightStep(announce = true) {
     attacker.roundKills = Math.min(5, attacker.roundKills + 1);
     attacker.money = Math.min(16000, attacker.money + 300);
     const isHs = Math.random() < 0.58;
+    const usedWeapon = attacker.activeWeapon ? attacker.activeWeapon.name : 'AK-47';
     pushKillfeedEvent(
       attacker.name,
       'human',
-      attacker.activeWeapon ? attacker.activeWeapon.name : 'AK-47',
+      usedWeapon,
       targetBot.name,
       'bot',
       isHs
     );
+    triggerPlayerKillFlash(attackerIdx, {
+      victim: targetBot.name,
+      weaponName: usedWeapon,
+      isHs,
+      roundKills: attacker.roundKills
+    });
     const remainingBots = appState.bots.filter(b => b.health > 0).length;
     if (attacker.roundKills >= 3) {
       appState.calloutText = `MULTI-KILL // ${attacker.name} (${attacker.roundKills}K THIS ROUND) — ${remainingBots} BOTS REMAIN`;
@@ -862,6 +870,7 @@ function triggerNewRound() {
   appState.roundPhase = 'live';
   appState.roundTimeLeft = 115.0;
   appState.bombTimeLeft = 40.0;
+  appState.killCelebrations = {};
   appState.players = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
   appState.players.forEach(p => {
     p.health = 100;
@@ -949,10 +958,25 @@ function applyServerGsiState(serverState) {
 
   // Dynamically adapt to the exact number of detected human players (e.g. 2v10, 3v10, 5v10)
   const baseDefaults = createInitialSimSquad(appState.humanSide, 5);
-  appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => ({
-    ...baseDefaults[idx],
-    ...gp
-  }));
+  appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => {
+    const pKey = gp.id || gp.name || `slot-${idx}`;
+    const prevK = appState.prevGsiKills[pKey];
+    const currK = Number(gp.kills || 0);
+    if (prevK !== undefined && currK > prevK) {
+      triggerPlayerKillFlash(idx, {
+        victim: 'BOT TARGET',
+        weaponName: (gp.activeWeapon && gp.activeWeapon.name) || 'WEAPON',
+        isHs: Boolean(gp.roundKillHs && gp.roundKillHs > 0),
+        roundKills: Number(gp.roundKills) || 1
+      });
+    }
+    appState.prevGsiKills[pKey] = currK;
+
+    return {
+      ...baseDefaults[idx],
+      ...gp
+    };
+  });
   appState.targetSquadSize = appState.players.length;
 
   while (appState.damageTrails.length < appState.players.length) {

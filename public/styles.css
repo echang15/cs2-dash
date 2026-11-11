@@ -838,6 +838,153 @@ html, body {
   filter: grayscale(0.85);
 }
 
+/* Stadium Kill Flash & Elimination Callout Animation */
+@keyframes stadiumKillCardFlash {
+  0% {
+    border-color: #ffffff;
+    border-top-color: #ffffff;
+    box-shadow: 0 0 46px rgba(255, 215, 70, 0.95), inset 0 0 80px rgba(255, 230, 120, 0.72);
+    transform: translateY(-6px) scale(1.014);
+  }
+  18% {
+    border-color: #ffcf33;
+    border-top-color: #ffe875;
+    box-shadow: 0 0 34px rgba(255, 196, 38, 0.85), inset 0 0 48px rgba(255, 196, 38, 0.42);
+    transform: translateY(-4px) scale(1.008);
+  }
+  65% {
+    border-color: var(--squad-accent);
+    border-top-color: #ffcf33;
+    box-shadow: 0 0 22px rgba(255, 196, 38, 0.45), inset 0 0 24px rgba(255, 196, 38, 0.2);
+    transform: translateY(-1px) scale(1.002);
+  }
+  100% {
+    border-color: var(--border-strong);
+    border-top-color: var(--squad-accent);
+    box-shadow: none;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes stadiumKillModelSurge {
+  0% {
+    filter: brightness(1.65) contrast(1.18) saturate(1.35);
+  }
+  25% {
+    filter: brightness(1.32) contrast(1.12) saturate(1.22);
+  }
+  100% {
+    filter: brightness(1) contrast(1) saturate(1);
+  }
+}
+
+@keyframes killBannerDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.92);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.03);
+  }
+  22% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+}
+
+.player-stadium-card.is-kill-flash {
+  animation: stadiumKillCardFlash 1.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--kill-anim-delay, 0ms);
+  z-index: 6;
+}
+
+.player-stadium-card.is-kill-flash::before {
+  animation: stadiumKillModelSurge 1.85s ease-out forwards;
+  animation-delay: var(--kill-anim-delay, 0ms);
+}
+
+.player-stadium-card.is-kill-flash .stat-cell.highlight {
+  background: rgba(255, 204, 41, 0.24);
+  border-color: #ffd23f;
+  box-shadow: 0 0 16px rgba(255, 204, 41, 0.45);
+}
+
+.player-stadium-card.is-kill-flash .stat-cell.highlight .stat-cell-val {
+  color: #ffe47a;
+}
+
+.kill-flash-banner {
+  position: absolute;
+  top: 146px;
+  left: 12px;
+  right: 12px;
+  z-index: 12;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(16, 12, 4, 0.94) 0%, rgba(44, 31, 6, 0.96) 50%, rgba(16, 12, 4, 0.94) 100%);
+  border: 1px solid #ffd23f;
+  border-left: 4px solid #ffe680;
+  border-right: 4px solid #ffe680;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.78), 0 0 22px rgba(255, 204, 41, 0.55);
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  animation: killBannerDrop 1.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--kill-anim-delay, 0ms);
+}
+
+.kill-flash-top-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffe680;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(255, 208, 54, 0.75);
+}
+
+.kill-flash-icon {
+  color: #ff475c;
+  font-size: 16px;
+}
+
+.kill-flash-hs-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  background: rgba(247, 54, 76, 0.28);
+  border: 1px solid var(--c4-red);
+  color: #ff8b97;
+  letter-spacing: 0.06em;
+}
+
+.kill-flash-sub-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #f4f7fb;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 /* --- ZONE 1: OPERATOR HEADER & LOBBY MODEL WINDOW --- */
 .card-zone-identity {
   padding: 14px 16px 12px;
