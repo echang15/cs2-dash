@@ -173,9 +173,11 @@ const WEAPON_CATALOG = {
 function parsePlayerWeapons(weaponsObj = {}) {
   let primary = null;
   let secondary = null;
+  let knife = null;
   let activeWeapon = null;
   const grenades = [];
   let hasC4 = false;
+  let hasZeus = false;
 
   for (const key of Object.keys(weaponsObj)) {
     const w = weaponsObj[key];
@@ -202,19 +204,26 @@ function parsePlayerWeapons(weaponsObj = {}) {
     }
 
     if (type === 'knife' || rawName.includes('knife') || rawName.includes('bayonet')) {
+      const meta = WEAPON_CATALOG[rawName];
+      const knifeObj = {
+        id: 'knife',
+        name: (meta && meta.name) ? meta.name : 'Tactical Knife',
+        skin: w.paintkit && w.paintkit !== 'default' ? w.paintkit.replace(/_/g, ' ').toUpperCase() : 'STANDARD ISSUE',
+        category: 'knife',
+        clip: 0,
+        clipMax: 0,
+        reserve: 0,
+        state: w.state || 'holstered'
+      };
+      knife = knifeObj;
       if (w.state === 'active') {
-        activeWeapon = {
-          id: 'knife',
-          name: 'Tactical Knife',
-          skin: w.paintkit && w.paintkit !== 'default' ? w.paintkit.replace(/_/g, ' ').toUpperCase() : 'STANDARD ISSUE',
-          category: 'knife',
-          clip: 0,
-          clipMax: 0,
-          reserve: 0,
-          state: 'active'
-        };
+        activeWeapon = knifeObj;
       }
       continue;
+    }
+
+    if (rawName.includes('taser')) {
+      hasZeus = true;
     }
 
     const meta = WEAPON_CATALOG[rawName] || {
@@ -260,7 +269,9 @@ function parsePlayerWeapons(weaponsObj = {}) {
       state: 'active'
     },
     grenades: grenades.slice(0, 4),
-    hasC4
+    knife,
+    hasC4,
+    hasZeus
   };
 }
 
@@ -585,12 +596,18 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
     deaths,
     assists,
     mvps,
+    score: typeof stats.score === 'number' ? stats.score : (kills * 2 + assists),
     adr,
+    totalDamage: totalDmgSoFar,
     hsPercent,
+    activity: rawPlayer.activity || 'playing',
+    observerSlot: typeof rawPlayer.observer_slot === 'number' ? rawPlayer.observer_slot : null,
     primaryWeapon: parsedWeapons.primary,
     secondaryWeapon: parsedWeapons.secondary,
+    knifeWeapon: parsedWeapons.knife || null,
     activeWeapon: parsedWeapons.activeWeapon,
     grenades: parsedWeapons.grenades,
+    hasZeus: Boolean(parsedWeapons.hasZeus),
     lastSeenAt: Date.now()
   };
 }
@@ -651,7 +668,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       teamCounts[team].push([sid, p]);
     }
 
-    // Determine human side (side with real SteamID64 players or <= 5 players vs bot swarm)
+    // Determine human side (side with real SteamID64 players or <= 10 non-bot players vs bot swarm)
     let humanSide = gsiStore.humanTeamSide;
     const ctHumans = teamCounts.CT.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !isBotSteamIdOrName(sid, p.name));
     const tHumans = teamCounts.T.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !isBotSteamIdOrName(sid, p.name));
@@ -661,9 +678,15 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
     } else if (tHumans.length > 0 && ctHumans.length === 0) {
       humanSide = 'T';
     } else if (teamCounts.CT.length > 0 && teamCounts.T.length > 0) {
-      if (teamCounts.CT.length <= 5 && teamCounts.T.length > teamCounts.CT.length) {
+      const ctNonBots = teamCounts.CT.filter(([sid, p]) => !isBotSteamIdOrName(sid, p.name));
+      const tNonBots = teamCounts.T.filter(([sid, p]) => !isBotSteamIdOrName(sid, p.name));
+      if (ctNonBots.length > 0 && tNonBots.length === 0) {
         humanSide = 'CT';
-      } else if (teamCounts.T.length <= 5 && teamCounts.CT.length > teamCounts.T.length) {
+      } else if (tNonBots.length > 0 && ctNonBots.length === 0) {
+        humanSide = 'T';
+      } else if (teamCounts.CT.length <= 10 && teamCounts.T.length > teamCounts.CT.length) {
+        humanSide = 'CT';
+      } else if (teamCounts.T.length <= 10 && teamCounts.CT.length > teamCounts.T.length) {
         humanSide = 'T';
       }
     }
@@ -672,7 +695,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
 
     const rawHumanTeam = teamCounts[humanSide];
     const filteredHumans = rawHumanTeam.filter(([sid, p]) => !isBotSteamIdOrName(sid, p.name));
-    const humanEntries = (filteredHumans.length > 0 ? filteredHumans : rawHumanTeam).slice(0, 5);
+    const humanEntries = (filteredHumans.length > 0 ? filteredHumans : rawHumanTeam).slice(0, 10);
     const botEntries = teamCounts[gsiStore.botTeamSide].slice(0, 10);
 
     // Detect any bots whose health just dropped to 0 on this packet
@@ -804,7 +827,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       const keys = Array.from(gsiStore.humanPlayersMap.keys());
       const existingIdx = keys.indexOf(sid);
       const slotIdx = existingIdx >= 0 ? existingIdx : gsiStore.humanPlayersMap.size;
-      if (slotIdx < 5) {
+      if (slotIdx < 10) {
         const normalized = normalizeGsiPlayer(sid, payload.player, slotIdx);
         gsiStore.humanPlayersMap.set(sid, normalized);
       }
@@ -839,7 +862,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
             level: 'INFO',
             category: 'gsi_connect',
             title: `CS2 CLIENT CONNECTED // ${playerName}`,
-            message: `Slot 0${assignedSlot} (${clientIp}) joined squad telemetry [${gsiClientsMap.size} PC(s) active]`,
+            message: `Slot ${String(assignedSlot).padStart(2, '0')} (${clientIp}) joined squad telemetry [${gsiClientsMap.size} PC(s) active]`,
             meta: { client: clientEntry }
           });
         } else {
@@ -864,7 +887,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
 
     // In multi-client mode (no spectator allplayers), infer remaining bots out of 10 from squad roundKills
     const totalRoundBotKills = Array.from(gsiStore.humanPlayersMap.values())
-      .slice(0, 5)
+      .slice(0, 10)
       .reduce((sum, p) => sum + (p.roundKills || 0), 0);
     const deadBotsCount = Math.min(10, totalRoundBotKills);
     gsiStore.bots = Array.from({ length: 10 }, (_, idx) => ({
@@ -946,7 +969,7 @@ setInterval(() => {
 }, 4000);
 
 function getSerializedGsiState() {
-  const humanPlayers = Array.from(gsiStore.humanPlayersMap.values()).slice(0, 5);
+  const humanPlayers = Array.from(gsiStore.humanPlayersMap.values()).slice(0, 10);
   return {
     lastPacketAt: gsiStore.lastPacketAt,
     packetsReceived: gsiStore.packetsReceived,
@@ -1073,7 +1096,7 @@ const server = http.createServer((req, res) => {
     const viewParam = url.searchParams.get('view') || 'squad';
     const slotParam = url.searchParams.get('slot');
     const viewLabel = viewParam === 'player'
-      ? `PLAYER VIEW${slotParam ? ` (SLOT 0${slotParam})` : ''}`
+      ? `PLAYER VIEW${slotParam ? ` (SLOT ${String(slotParam).padStart(2, '0')})` : ''}`
       : 'SQUAD BROADCAST HUD';
     const displayId = `display-${nextSseClientId++}`;
     const meta = {
@@ -1174,14 +1197,14 @@ const server = http.createServer((req, res) => {
   // Simulate / Test Client Connection Notification
   if (req.method === 'POST' && url.pathname === '/api/test-notification') {
     const clientIp = formatClientIp(req);
-    const sampleCallsigns = ['VORTEX', 'KAIROS', 'NYX', 'HEX', 'RONIN'];
+    const sampleCallsigns = ['VORTEX', 'KAIROS', 'NYX', 'HEX', 'RONIN', 'CYPHER', 'VALKYRIE', 'SPECTRE', 'BLITZ', 'TITAN'];
     const callsign = sampleCallsigns[Math.floor(Math.random() * sampleCallsigns.length)];
-    const slotNum = (gsiClientsMap.size % 5) + 1;
+    const slotNum = (gsiClientsMap.size % 10) + 1;
     const entry = recordServerLog({
       level: 'INFO',
       category: 'gsi_connect',
       title: `CS2 CLIENT CONNECTED // ${callsign}`,
-      message: `Simulated Operator ${callsign} (${clientIp}) connected on Slot 0${slotNum}`,
+      message: `Simulated Operator ${callsign} (${clientIp}) connected on Slot ${String(slotNum).padStart(2, '0')}`,
       meta: { simulated: true, name: callsign, ip: clientIp, slot: slotNum }
     });
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1213,7 +1236,7 @@ const server = http.createServer((req, res) => {
 
   // Serve Static Files (including /player and /player/:slot routes)
   let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
-  if (url.pathname === '/player' || /^\/player\/[1-5]$/.test(url.pathname)) {
+  if (url.pathname === '/player' || /^\/player\/([1-9]|10)$/.test(url.pathname)) {
     filePath = '/player.html';
   }
   const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, '');

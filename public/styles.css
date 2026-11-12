@@ -93,6 +93,7 @@ html, body {
 .viewport-shell {
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,15 +106,22 @@ html, body {
 
 .broadcast-stage {
   width: var(--stage-w, 1920px);
+  min-width: var(--stage-w, 1920px);
+  max-width: var(--stage-w, 1920px);
   height: var(--stage-h, 1080px);
+  min-height: var(--stage-h, 1080px);
+  max-height: var(--stage-h, 1080px);
+  flex: 0 0 var(--stage-w, 1920px);
   transform: scale(var(--stage-scale)) translateZ(0);
   transform-origin: center center;
   backface-visibility: hidden;
   -webkit-font-smoothing: subpixel-antialiased;
   will-change: transform;
-  contain: layout style paint;
+  contain: size layout style paint;
+  overflow: hidden;
   display: grid;
-  grid-template-rows: 118px 46px 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 118px 46px minmax(0, 1fr);
   gap: 12px;
   padding: 14px 20px 18px;
   position: relative;
@@ -133,9 +141,12 @@ html, body {
    ========================================================================== */
 .stadium-header {
   display: grid;
-  grid-template-columns: 1fr 480px 1fr;
+  grid-template-columns: minmax(0, 1fr) 480px minmax(0, 1fr);
   gap: 14px;
   height: 118px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .team-wing {
@@ -146,6 +157,8 @@ html, body {
   position: relative;
   overflow: hidden;
   padding: 10px 18px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .team-wing::before {
@@ -157,7 +170,7 @@ html, body {
 }
 
 .team-wing.human-wing {
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 18px;
   background: linear-gradient(90deg, var(--squad-surface) 0%, var(--bg-panel) 55%);
   border-color: var(--squad-border);
@@ -169,7 +182,7 @@ html, body {
 }
 
 .team-wing.bot-wing {
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   gap: 18px;
   background: linear-gradient(270deg, var(--bot-surface) 0%, var(--bg-panel) 55%);
   border-color: var(--bot-border);
@@ -222,6 +235,8 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .bot-wing .team-identity {
@@ -267,6 +282,10 @@ html, body {
   text-transform: uppercase;
   line-height: 1;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .team-economy-strip {
@@ -331,8 +350,8 @@ html, body {
 
 .pip-row-5 {
   display: grid;
-  grid-template-columns: repeat(5, 18px);
-  gap: 5px;
+  grid-template-columns: repeat(var(--active-player-count, 5), minmax(12px, 18px));
+  gap: 4px;
 }
 
 .pip-row-10 {
@@ -423,6 +442,8 @@ html, body {
   padding: 8px 16px;
   position: relative;
   overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .center-clock-module.bomb-planted {
@@ -562,6 +583,10 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
@@ -569,7 +594,16 @@ html, body {
   color: var(--text-secondary);
 }
 
+#defuse-hint-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .callout-alert-text {
+  flex: 1 1 0%;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
   color: var(--text-primary);
   text-transform: uppercase;
   white-space: nowrap;
@@ -587,6 +621,8 @@ html, body {
 .tactical-subheader {
   display: flex;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 46px;
   position: relative;
   z-index: 60;
@@ -594,7 +630,9 @@ html, body {
 
 .killfeed-ticker {
   width: 100%;
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
   display: flex;
@@ -632,9 +670,11 @@ html, body {
   gap: 8px;
   height: 30px;
   overflow: hidden;
-  flex: 1;
+  flex: 1 1 0%;
+  width: 0;
   min-width: 0;
-  contain: layout paint;
+  max-width: 100%;
+  contain: size layout paint;
 }
 
 .kill-pill {
@@ -830,6 +870,28 @@ html, body {
   gap: 6px;
 }
 
+.sim-squad-scale-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.squad-scale-btn-group {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  flex: 1;
+}
+
+.squad-scale-btn-group .ctrl-btn.mini-btn {
+  padding: 0 4px;
+  text-align: center;
+  justify-content: center;
+}
+
 .sim-modal-row {
   display: flex;
   align-items: center;
@@ -893,9 +955,12 @@ html, body {
    ========================================================================== */
 .players-stage-grid {
   display: grid;
-  grid-template-columns: repeat(var(--active-player-count, 5), minmax(320px, 520px));
+  grid-template-columns: repeat(var(--active-player-count, 5), minmax(0, 520px));
   justify-content: center;
   gap: 14px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
 }
@@ -905,7 +970,9 @@ html, body {
   border: 1px solid var(--border-strong);
   border-top: 4px solid var(--squad-accent);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 232px 128px 220px 138px 1fr;
+  min-width: 0;
   position: relative;
   overflow: hidden;
   contain: layout paint;
@@ -1752,6 +1819,312 @@ html, body {
 }
 
 /* ==========================================================================
+   3B. 6-TO-10 PLAYER SQUAD DENSITY SCALING (COMPACT: 6-7, ULTRA-COMPACT: 8-10)
+   ========================================================================== */
+body[data-squad-density="compact"] .players-stage-grid {
+  gap: 10px;
+}
+
+body[data-squad-density="ultra-compact"] .players-stage-grid {
+  gap: 7px;
+}
+
+body[data-squad-density="compact"] .card-zone-identity,
+body[data-squad-density="compact"] .card-zone-vitals,
+body[data-squad-density="compact"] .card-zone-weapons,
+body[data-squad-density="compact"] .card-zone-utility,
+body[data-squad-density="compact"] .card-zone-stats {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+body[data-squad-density="ultra-compact"] .card-zone-identity,
+body[data-squad-density="ultra-compact"] .card-zone-vitals,
+body[data-squad-density="ultra-compact"] .card-zone-weapons,
+body[data-squad-density="ultra-compact"] .card-zone-utility,
+body[data-squad-density="ultra-compact"] .card-zone-stats {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
+body[data-squad-density="compact"] .operator-name-block,
+body[data-squad-density="ultra-compact"] .operator-name-block {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+body[data-squad-density="compact"] .operator-callsign {
+  font-size: 30px;
+  width: 100%;
+}
+
+body[data-squad-density="ultra-compact"] .operator-callsign {
+  font-size: 23px;
+  width: 100%;
+}
+
+body[data-squad-density="compact"] .operator-sub-status,
+body[data-squad-density="ultra-compact"] .operator-sub-status {
+  width: 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+body[data-squad-density="compact"] .status-pill,
+body[data-squad-density="compact"] .player-inspect-pill {
+  font-size: 9px;
+  padding: 2px 5px;
+}
+
+body[data-squad-density="ultra-compact"] .status-pill,
+body[data-squad-density="ultra-compact"] .player-inspect-pill {
+  font-size: 8px;
+  padding: 2px 4px;
+  letter-spacing: 0.03em;
+}
+
+body[data-squad-density="compact"] .kill-flash-banner,
+body[data-squad-density="ultra-compact"] .kill-flash-banner {
+  left: 5px;
+  right: 5px;
+  padding: 4px 6px;
+}
+
+body[data-squad-density="compact"] .kill-flash-top-line,
+body[data-squad-density="ultra-compact"] .kill-flash-top-line {
+  font-size: 13px;
+  gap: 4px;
+}
+
+body[data-squad-density="compact"] .kill-flash-sub-line,
+body[data-squad-density="ultra-compact"] .kill-flash-sub-line {
+  font-size: 8px;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+body[data-squad-density="compact"] .hp-giant-value {
+  font-size: 40px;
+}
+
+body[data-squad-density="ultra-compact"] .hp-giant-value {
+  font-size: 30px;
+}
+
+body[data-squad-density="ultra-compact"] .hp-unit-label {
+  font-size: 10px;
+}
+
+body[data-squad-density="compact"] .armor-cluster {
+  padding: 4px 7px;
+  gap: 5px;
+}
+
+body[data-squad-density="ultra-compact"] .armor-cluster {
+  padding: 3px 5px;
+  gap: 4px;
+}
+
+body[data-squad-density="compact"] .armor-value {
+  font-size: 20px;
+}
+
+body[data-squad-density="ultra-compact"] .armor-value {
+  font-size: 16px;
+}
+
+body[data-squad-density="ultra-compact"] .armor-type-sub {
+  display: none;
+}
+
+body[data-squad-density="ultra-compact"] .armor-icon-wrap {
+  width: 16px;
+  height: 16px;
+}
+
+body[data-squad-density="compact"] .weapon-name-group,
+body[data-squad-density="ultra-compact"] .weapon-name-group {
+  min-width: 0;
+  overflow: hidden;
+}
+
+body[data-squad-density="compact"] .weapon-title {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-squad-density="ultra-compact"] .weapon-title {
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-squad-density="compact"] .weapon-skin-sub,
+body[data-squad-density="ultra-compact"] .weapon-skin-sub {
+  font-size: 8.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-squad-density="compact"] .weapon-state-tag,
+body[data-squad-density="ultra-compact"] .weapon-state-tag {
+  font-size: 8px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+body[data-squad-density="compact"] .ammo-clip-big {
+  font-size: 28px;
+}
+
+body[data-squad-density="ultra-compact"] .ammo-clip-big {
+  font-size: 22px;
+}
+
+body[data-squad-density="ultra-compact"] .ammo-reserve-sub {
+  font-size: 12px;
+}
+
+body[data-squad-density="ultra-compact"] .ammo-telemetry-row {
+  gap: 6px;
+}
+
+body[data-squad-density="compact"] .sidearm-mini-row,
+body[data-squad-density="ultra-compact"] .sidearm-mini-row {
+  font-size: 9px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+body[data-squad-density="compact"] .utility-belt-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 48px;
+  gap: 4px;
+}
+
+body[data-squad-density="compact"] .gear-kit-slot {
+  width: 48px;
+}
+
+body[data-squad-density="ultra-compact"] .utility-belt-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+body[data-squad-density="ultra-compact"] .gear-kit-slot {
+  width: auto;
+}
+
+body[data-squad-density="ultra-compact"] .grenade-slot,
+body[data-squad-density="ultra-compact"] .gear-kit-slot {
+  height: 46px;
+}
+
+body[data-squad-density="ultra-compact"] .grenade-slot svg,
+body[data-squad-density="ultra-compact"] .gear-kit-slot svg {
+  width: 15px;
+  height: 15px;
+}
+
+body[data-squad-density="compact"] .grenade-slot-label {
+  font-size: 7.5px;
+  letter-spacing: 0.02em;
+}
+
+body[data-squad-density="ultra-compact"] .grenade-slot-label {
+  font-size: 6.5px;
+  letter-spacing: 0;
+}
+
+body[data-squad-density="compact"] .cash-amount {
+  font-size: 19px;
+}
+
+body[data-squad-density="ultra-compact"] .cash-label {
+  display: none;
+}
+
+body[data-squad-density="ultra-compact"] .cash-amount {
+  font-size: 15px;
+}
+
+body[data-squad-density="compact"] .equip-val-block,
+body[data-squad-density="ultra-compact"] .equip-val-block {
+  font-size: 9px;
+}
+
+body[data-squad-density="compact"] .stats-grid-4 {
+  gap: 4px;
+}
+
+body[data-squad-density="ultra-compact"] .stats-grid-4 {
+  gap: 3px;
+}
+
+body[data-squad-density="compact"] .stat-cell {
+  padding: 7px 3px;
+}
+
+body[data-squad-density="ultra-compact"] .stat-cell {
+  padding: 5px 2px;
+}
+
+body[data-squad-density="compact"] .stat-cell-label {
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
+}
+
+body[data-squad-density="ultra-compact"] .stat-cell-label {
+  font-size: 7.5px;
+  letter-spacing: 0;
+}
+
+body[data-squad-density="compact"] .stat-cell-val {
+  font-size: 18px;
+}
+
+body[data-squad-density="ultra-compact"] .stat-cell-val {
+  font-size: 14px;
+}
+
+body[data-squad-density="compact"] .round-dmg-meta {
+  font-size: 9px;
+}
+
+body[data-squad-density="ultra-compact"] .round-dmg-meta {
+  font-size: 8px;
+  letter-spacing: -0.02em;
+}
+
+body[data-squad-density="compact"] .pd-tab-btn,
+body[data-squad-density="ultra-compact"] .pd-tab-btn {
+  padding: 0 9px;
+  font-size: 14px;
+  gap: 5px;
+}
+
+body[data-squad-density="compact"] .uw-leaderboard-list,
+body[data-squad-density="ultra-compact"] .uw-leaderboard-list {
+  gap: 4px;
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+
+body[data-squad-density="compact"] .uw-lb-row,
+body[data-squad-density="ultra-compact"] .uw-lb-row {
+  padding: 4px 8px;
+}
+
+/* ==========================================================================
    4. GSI SETUP & PRESENTER CONFIGURATION MODAL
    ========================================================================== */
 .modal-backdrop {
@@ -1770,9 +2143,9 @@ html, body {
 }
 
 .modal-dialog {
-  width: 780px;
-  max-width: 94vw;
-  max-height: 88vh;
+  width: 940px;
+  max-width: 95vw;
+  max-height: 90vh;
   background: var(--bg-panel-elevated);
   border: 1px solid var(--border-highlight);
   padding: 24px;
@@ -1915,24 +2288,28 @@ body.res-5120x1440 {
 
 .stage-main-area {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   position: relative;
 }
 
 body.res-5120x1440:not(.view-mode-player) .stage-main-area {
-  grid-template-columns: 1fr 1220px;
+  grid-template-columns: minmax(0, 1fr) 1220px;
 }
 
 .ultrawide-tactical-wing {
   display: none;
   height: 100%;
   min-height: 0;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -2163,9 +2540,13 @@ body.res-5120x1440:not(.view-mode-player) .ultrawide-tactical-wing {
 .player-detail-view {
   display: none;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
-  grid-template-rows: 52px 1fr;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 52px minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -2259,13 +2640,15 @@ body.view-mode-player .player-detail-view {
 .pd-main-grid {
   height: 100%;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
   display: grid;
-  grid-template-columns: 460px 1fr 1fr;
+  grid-template-columns: 460px minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
 }
 
 body.res-5120x1440.view-mode-player .pd-main-grid {
-  grid-template-columns: 620px 1.15fr 1.15fr;
+  grid-template-columns: 620px minmax(0, 1.15fr) minmax(0, 1.15fr);
   gap: 20px;
 }
 
@@ -2365,6 +2748,7 @@ body.res-5120x1440.view-mode-player .pd-main-grid {
 .pd-column {
   height: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2374,6 +2758,8 @@ body.res-5120x1440.view-mode-player .pd-main-grid {
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   padding: 16px 18px;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2911,5 +3297,255 @@ body.res-5120x1440.view-mode-player .pd-main-grid {
   from { width: 100%; }
   to { width: 0%; }
 }
+
+/* ==========================================================================
+   SOLO OPERATOR TELEMETRY MODE (AUTO-ACTIVATED WHEN 1 NON-OBSERVER CLIENT)
+   ========================================================================== */
+.pd-main-grid.pd-solo-grid {
+  grid-template-columns: 380px minmax(0, 1fr) minmax(0, 1fr) 360px;
+  gap: 14px;
+}
+
+.pd-main-grid.pd-solo-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+body.res-5120x1440 .pd-main-grid.pd-solo-grid {
+  grid-template-columns: 440px minmax(0, 1fr) minmax(0, 1fr) 460px;
+}
+
+.pd-solo-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: var(--squad-surface);
+  border: 1px solid var(--squad-border);
+  color: var(--squad-accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.pd-solo-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pd-solo-meta-pill strong {
+  color: var(--text-primary);
+}
+
+.pd-sensory-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pd-sensory-chip {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-sensory-chip.active-flash {
+  border-color: rgba(250, 204, 21, 0.6);
+  background: rgba(250, 204, 21, 0.08);
+}
+
+.pd-sensory-chip.active-smoke {
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.pd-sensory-chip.active-burn {
+  border-color: rgba(249, 115, 22, 0.7);
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.pd-sensory-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.pd-sensory-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.pd-sensory-fill {
+  height: 100%;
+  transition: width 150ms linear;
+}
+
+.pd-sensory-fill.flash {
+  background: #fde047;
+}
+
+.pd-sensory-fill.smoke {
+  background: #94a3b8;
+}
+
+.pd-sensory-fill.burn {
+  background: #f97316;
+}
+
+.pd-sensory-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pd-solo-melee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.36);
+  border: 1px solid var(--border-subtle);
+}
+
+.pd-solo-melee-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pd-solo-melee-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pd-solo-melee-skin {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--squad-accent);
+  white-space: nowrap;
+}
+
+.pd-stats-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pd-stats-grid-12 .pd-stat-card {
+  padding: 10px 8px;
+}
+
+.pd-stats-grid-12 .pd-stat-val {
+  font-size: 24px;
+}
+
+.pd-main-grid.pd-solo-grid .pd-round-bars {
+  height: 170px;
+}
+
+.pd-solo-bot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pd-solo-bot-row {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-solo-bot-row.dead {
+  opacity: 0.42;
+}
+
+.pd-solo-bot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pd-solo-bot-name {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-solo-bot-hp {
+  color: var(--bot-accent);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.pd-solo-bot-row.dead .pd-solo-bot-hp {
+  color: var(--text-muted);
+}
+
+.pd-solo-bot-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.pd-solo-bot-fill {
+  height: 100%;
+  background: var(--bot-accent);
+  transition: width 150ms linear;
+}
+
+.pd-solo-kill-log {
+  max-height: 290px;
+  overflow: hidden;
+}
+
+.pd-solo-client-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.pd-solo-client-footer strong {
+  color: var(--squad-accent);
+}
+
 
 

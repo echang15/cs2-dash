@@ -183,7 +183,7 @@
                 </div>
                 <div class="sim-modal-grid">
                   <button type="button" class="ctrl-btn active" id="btn-toggle-sim">PAUSE SIM</button>
-                  <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (2v10, 3v10, 4v10, 5v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
+                  <button type="button" class="ctrl-btn" id="btn-squad-size" title="Cycle Human Squad Size (1v10 up to 10v10) or Auto-Detect from GSI">SQUAD: 5v10</button>
                   <button type="button" class="ctrl-btn" id="btn-sim-firefight">FIREFIGHT</button>
                   <button type="button" class="ctrl-btn danger" id="btn-sim-bomb">PLANT C4</button>
                   <button type="button" class="ctrl-btn" id="btn-sim-flash">FLASH SQUAD</button>
@@ -191,6 +191,21 @@
                   <button type="button" class="ctrl-btn" id="btn-sim-newround">NEW ROUND</button>
                   <button type="button" class="ctrl-btn" id="btn-swap-sides">SWAP CT/T</button>
                   <button type="button" class="ctrl-btn" id="btn-shuffle-bgs" title="Cycle/Shuffle Player Card Lobby Backgrounds (11 CT & 11 T Skins)">SHUFFLE SKINS</button>
+                </div>
+                <div class="sim-squad-scale-row">
+                  <span class="sim-modal-title">HUMAN SQUAD SCALE (1–10):</span>
+                  <div class="squad-scale-btn-group" id="quick-squad-size-btns">
+                    <button type="button" class="ctrl-btn mini-btn" data-size="1">1</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="2">2</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="3">3</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="4">4</button>
+                    <button type="button" class="ctrl-btn mini-btn active" data-size="5">5</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="6">6</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="7">7</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="8">8</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="9">9</button>
+                    <button type="button" class="ctrl-btn mini-btn" data-size="10">10</button>
+                  </div>
                 </div>
               </div>
 
@@ -235,7 +250,7 @@
       </div>
 
       <!-- Team Names & Squad Size Configuration -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:end; background:rgba(0,0,0,0.32); border:1px solid var(--border-subtle); padding:12px 14px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:end; background:rgba(0,0,0,0.32); border:1px solid var(--border-subtle); padding:12px 14px;">
         <div class="roster-input-group">
           <label for="input-human-team-name">HUMAN SQUAD TEAM NAME</label>
           <input type="text" id="input-human-team-name" value="APEX VANGUARD" maxlength="22" />
@@ -244,30 +259,36 @@
           <label for="input-bot-team-name">BOT OPPOSITION TEAM NAME</label>
           <input type="text" id="input-bot-team-name" value="BOT SWARM (10)" maxlength="22" />
         </div>
-        <div class="roster-input-group">
-          <label>HUMAN PLAYERS (AUTO IN GSI)</label>
-          <div style="display:flex; gap:4px;" id="modal-squad-size-btns">
+        <div class="roster-input-group" style="grid-column: 1 / -1;">
+          <label>HUMAN PLAYERS SCALE (1 TO 10 OPERATORS — AUTO-DETECTED IN LIVE GSI)</label>
+          <div style="display:grid; grid-template-columns: repeat(10, 1fr); gap:4px;" id="modal-squad-size-btns">
+            <button type="button" class="ctrl-btn" data-size="1">1v10</button>
             <button type="button" class="ctrl-btn" data-size="2">2v10</button>
             <button type="button" class="ctrl-btn" data-size="3">3v10</button>
             <button type="button" class="ctrl-btn" data-size="4">4v10</button>
             <button type="button" class="ctrl-btn active" data-size="5">5v10</button>
+            <button type="button" class="ctrl-btn" data-size="6">6v10</button>
+            <button type="button" class="ctrl-btn" data-size="7">7v10</button>
+            <button type="button" class="ctrl-btn" data-size="8">8v10</button>
+            <button type="button" class="ctrl-btn" data-size="9">9v10</button>
+            <button type="button" class="ctrl-btn" data-size="10">10v10</button>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS, LOBBY BACKGROUNDS &amp; INDIVIDUAL PLAYER URLS</h4>
+        <h4 style="font-family:var(--font-display); font-size:20px; margin-bottom:8px; color:var(--squad-accent);">CUSTOMIZE OPERATOR CALLSIGNS, LOBBY BACKGROUNDS &amp; INDIVIDUAL PLAYER URLS (SLOTS 01–10)</h4>
         <div class="roster-editor-grid" id="roster-editor-grid"></div>
       </div>
 
       <div class="modal-steps">
         <div class="step-card">
           <h4>MODE A: SINGLE SPECTATOR / OBSERVER PC</h4>
-          <p>Drop <code>gamestate_integration_cs2dash.cfg</code> into the observer PC's CS2 <code>cfg</code> folder. Spectating a 2v10, 3v10, or 5v10 match automatically detects the active human players and renders their cards.</p>
+          <p>Drop <code>gamestate_integration_cs2dash.cfg</code> into the observer PC's CS2 <code>cfg</code> folder. Spectating a 1v10, 5v10, or 10v10 match automatically detects the active human players and renders their cards.</p>
         </div>
         <div class="step-card">
-          <h4>MODE B: 2 TO 5 PLAYER PCs (MULTI-CLIENT MERGE)</h4>
-          <p>No spectator PC? Drop the <code>.cfg</code> file onto each friend's PC! Whether 2, 3, 4, or 5 friends join the server, the dashboard dynamically scales the cards to match the connected players.</p>
+          <h4>MODE B: 1 TO 10 PLAYER PCs (MULTI-CLIENT MERGE)</h4>
+          <p>No spectator PC? Drop the <code>.cfg</code> file onto each friend's PC! Whether 2, 5, 8, or 10 friends join the server, the dashboard dynamically scales the cards to match all connected players.</p>
         </div>
       </div>
 

@@ -264,13 +264,18 @@ function getCardBackgroundUrl(side, bgId) {
   return found.url;
 }
 
-// Default 5 Human Operators Roster (each with a distinct default CT and T lobby background!)
+// Default 10 Human Operators Roster (each with a distinct default CT and T lobby background!)
 const DEFAULT_CALLSIGNS = [
   { name: 'VORTEX', ctBg: 4, tBg: 2 },
   { name: 'KAIROS', ctBg: 2, tBg: 3 },
   { name: 'NYX', ctBg: 3, tBg: 1 },
   { name: 'HEX', ctBg: 8, tBg: 8 },
-  { name: 'RONIN', ctBg: 9, tBg: 10 }
+  { name: 'RONIN', ctBg: 9, tBg: 10 },
+  { name: 'CYPHER', ctBg: 1, tBg: 4 },
+  { name: 'VALKYRIE', ctBg: 5, tBg: 5 },
+  { name: 'SPECTRE', ctBg: 6, tBg: 6 },
+  { name: 'BLITZ', ctBg: 7, tBg: 7 },
+  { name: 'TITAN', ctBg: 10, tBg: 9 }
 ];
 
 const BOT_NAMES = [
@@ -308,10 +313,12 @@ const appState = {
   prevGsiHealth: {},
   gsiPlayerTrackers: {},
   seenServerKillIds: new Set(),
-  damageTrails: [100, 100, 100, 100, 100],
+  damageTrails: Array.from({ length: 10 }, () => 100),
   displayRes: '1080p', // '1080p' | '1440p' | '5120x1440'
   viewMode: 'squad', // 'squad' | 'player'
-  selectedPlayerIdx: 0, // 0..4
+  ingestionMode: 'simulation', // 'simulation' | 'multi_client' | 'spectator_allplayers'
+  soloViewDismissed: false,
+  selectedPlayerIdx: 0, // 0..9
   lanIp: window.location.hostname || '127.0.0.1',
   port: window.location.port || '3000',
   sseConnected: false,
@@ -328,7 +335,7 @@ const appState = {
 };
 
 function triggerPlayerKillFlash(slotIdx, details = {}) {
-  if (slotIdx < 0 || slotIdx > 4) return;
+  if (slotIdx < 0 || slotIdx > 9) return;
   if (!appState.killCelebrations) appState.killCelebrations = {};
   const now = Date.now();
   const rk = Number(details.roundKills) || 1;
@@ -337,12 +344,17 @@ function triggerPlayerKillFlash(slotIdx, details = {}) {
     2: 'DOUBLE KILL // 2K',
     3: 'TRIPLE KILL // 3K',
     4: 'QUAD KILL // 4K',
-    5: 'ACE // 5K WIPE!'
+    5: 'ACE // 5K WIPE!',
+    6: 'RAMPAGE // 6K!',
+    7: 'DOMINATION // 7K!',
+    8: 'UNSTOPPABLE // 8K!',
+    9: 'GODLIKE // 9K!',
+    10: 'DECIMATION // 10K SWARM WIPE!'
   };
   appState.killCelebrations[slotIdx] = {
     startedAt: now,
     expiresAt: now + 1850,
-    headline: labelMap[Math.min(5, Math.max(1, rk))] || 'ELIMINATION // +1 KILL',
+    headline: labelMap[Math.min(10, Math.max(1, rk))] || 'ELIMINATION // +1 KILL',
     victim: details.victim || 'TARGET',
     weaponName: details.weaponName || 'RIFLE',
     isHs: Boolean(details.isHs),
@@ -406,10 +418,62 @@ function createInitialSimSquad(side = 'CT', count = appState.targetSquadSize) {
       money: 7450,
       equipValue: 4950,
       kills: 24, deaths: 8, assists: 11, adr: 115, hsPercent: 61, roundKills: 1, roundDamage: 184
+    },
+    {
+      primary: isCT
+        ? { id: 'famas', name: 'FAMAS', skin: 'COMMEMORATION', clip: 25, clipMax: 25, reserve: 90 }
+        : { id: 'ak47', name: 'AK-47', skin: 'BLOODSPORT', clip: 30, clipMax: 30, reserve: 90 },
+      secondary: { id: 'p250', name: 'P250', skin: 'SEE YA LATER', clip: 13, clipMax: 13, reserve: 26 },
+      grenades: ['smoke', 'flash', 'he'],
+      money: 4600,
+      equipValue: 4750,
+      kills: 21, deaths: 10, assists: 8, adr: 104, hsPercent: 57, roundKills: 1, roundDamage: 136
+    },
+    {
+      primary: isCT
+        ? { id: 'aug', name: 'AUG', skin: 'AKIHABARA ACCEPT', clip: 30, clipMax: 30, reserve: 90 }
+        : { id: 'sg553', name: 'SG 553', skin: 'INTEGRALE', clip: 30, clipMax: 30, reserve: 90 },
+      secondary: isCT
+        ? { id: 'fiveseven', name: 'Five-SeveN', skin: 'HYPER BEAST', clip: 20, clipMax: 20, reserve: 100 }
+        : { id: 'tec9', name: 'Tec-9', skin: 'FUEL INJECTOR', clip: 18, clipMax: 18, reserve: 90 },
+      grenades: ['smoke', 'flash', 'molotov', 'he'],
+      money: 5800,
+      equipValue: 5600,
+      kills: 25, deaths: 9, assists: 10, adr: 119, hsPercent: 52, roundKills: 2, roundDamage: 210
+    },
+    {
+      primary: { id: 'ssg08', name: 'SSG 08', skin: 'DRAGONFIRE', clip: 10, clipMax: 10, reserve: 90 },
+      secondary: { id: 'deagle', name: 'Desert Eagle', skin: 'EMERALD JORMUNGANDR', clip: 7, clipMax: 7, reserve: 35 },
+      grenades: ['smoke', 'flash', 'he'],
+      money: 6900,
+      equipValue: 4300,
+      kills: 20, deaths: 8, assists: 6, adr: 102, hsPercent: 70, roundKills: 1, roundDamage: 154
+    },
+    {
+      primary: isCT
+        ? { id: 'm4a4', name: 'M4A4', skin: 'THE EMPEROR', clip: 30, clipMax: 30, reserve: 90 }
+        : { id: 'mac10', name: 'MAC-10', skin: 'NEON RIDER', clip: 30, clipMax: 30, reserve: 100 },
+      secondary: isCT
+        ? { id: 'usps', name: 'USP-S', skin: 'CORTEX', clip: 12, clipMax: 12, reserve: 24 }
+        : { id: 'glock', name: 'Glock-18', skin: 'WATER ELEMENTAL', clip: 20, clipMax: 20, reserve: 120 },
+      grenades: ['smoke', 'flash', 'molotov'],
+      money: 5350,
+      equipValue: 5150,
+      kills: 18, deaths: 12, assists: 13, adr: 94, hsPercent: 49, roundKills: 1, roundDamage: 128
+    },
+    {
+      primary: isCT
+        ? { id: 'xm1014', name: 'XM1014', skin: 'TRANQUILITY', clip: 7, clipMax: 7, reserve: 32 }
+        : { id: 'ak47', name: 'AK-47', skin: 'FIRE SERPENT', clip: 30, clipMax: 30, reserve: 90 },
+      secondary: { id: 'deagle', name: 'Desert Eagle', skin: 'KUMICHO DRAGON', clip: 7, clipMax: 7, reserve: 35 },
+      grenades: ['smoke', 'flash', 'he', 'molotov'],
+      money: 8100,
+      equipValue: 5300,
+      kills: 23, deaths: 9, assists: 9, adr: 112, hsPercent: 55, roundKills: 1, roundDamage: 175
     }
   ];
 
-  const safeCount = Math.max(1, Math.min(5, count || 5));
+  const safeCount = Math.max(1, Math.min(10, count || 5));
   const currRound = Math.max(1, appState.roundNumber || 18);
   return loadouts.slice(0, safeCount).map((item, idx) => {
     const hsKills = Math.round((item.kills * item.hsPercent) / 100);
@@ -426,14 +490,15 @@ function createInitialSimSquad(side = 'CT', count = appState.targetSquadSize) {
     }
     roundHistory[currRound] = { rNum: currRound, val: item.roundDamage, kills: item.roundKills };
 
+    const slotMeta = appState.customCallsigns[idx] || DEFAULT_CALLSIGNS[idx] || DEFAULT_CALLSIGNS[0];
     return {
       id: `sim-human-${idx + 1}`,
       slot: idx + 1,
-      name: appState.customCallsigns[idx].name,
-      role: appState.customCallsigns[idx].role,
+      name: slotMeta.name,
+      role: slotMeta.role,
       team: side,
-      health: idx === 3 ? 68 : idx === 2 ? 84 : 100,
-      armor: idx === 3 ? 82 : 100,
+      health: idx === 3 ? 68 : idx === 2 ? 84 : idx === 7 ? 76 : 100,
+      armor: idx === 3 ? 82 : idx === 7 ? 91 : 100,
       helmet: true,
       defuseKit: isCT,
       hasC4: !isCT && idx === Math.min(2, safeCount - 1),
@@ -582,7 +647,12 @@ function initSimulationState() {
 function initRouteAndResolutionFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const path = window.location.pathname || '';
-  const pathMatch = path.match(/\/player\/([1-5])/i);
+  const pathMatch = path.match(/\/player\/(10|[1-9])/i);
+
+  const squadParam = Number(params.get('squad') || params.get('players'));
+  if (squadParam >= 1 && squadParam <= 10) {
+    appState.targetSquadSize = squadParam;
+  }
 
   const slotParam = params.get('slot') || params.get('player') || (pathMatch ? pathMatch[1] : null);
   const isPlayerRoute =
@@ -595,8 +665,11 @@ function initRouteAndResolutionFromUrl() {
     appState.viewMode = 'player';
   }
   if (slotParam) {
-    const parsed = Math.max(1, Math.min(5, Number(slotParam) || 1));
+    const parsed = Math.max(1, Math.min(10, Number(slotParam) || 1));
     appState.selectedPlayerIdx = parsed - 1;
+    if (parsed > appState.targetSquadSize) {
+      appState.targetSquadSize = parsed;
+    }
   }
 
   const resParam = params.get('res');
@@ -643,7 +716,22 @@ function setDisplayResolution(resMode, triggerFullscreen = true) {
   renderAll();
 }
 
+function isSoloClientActive() {
+  if (appState.soloViewDismissed) return false;
+  if (appState.players.length !== 1) return false;
+  if (appState.ingestionMode === 'spectator_allplayers') return false;
+  return true;
+}
+
+function getEffectiveViewMode() {
+  if (appState.viewMode === 'player' || isSoloClientActive()) {
+    return 'player';
+  }
+  return 'squad';
+}
+
 function openPlayerDetailView(slotIdx = 0, pushUrl = true) {
+  appState.soloViewDismissed = false;
   const maxIdx = Math.max(0, appState.players.length - 1);
   appState.selectedPlayerIdx = Math.max(0, Math.min(maxIdx, Number(slotIdx) || 0));
   appState.viewMode = 'player';
@@ -655,13 +743,17 @@ function openPlayerDetailView(slotIdx = 0, pushUrl = true) {
   }
   const p = appState.players[appState.selectedPlayerIdx];
   if (p) {
-    appState.calloutText = `INSPECTING OPERATOR 0${appState.selectedPlayerIdx + 1} // ${p.name} DEEP-DIVE TELEMETRY`;
+    const slotStr = String(appState.selectedPlayerIdx + 1).padStart(2, '0');
+    appState.calloutText = `INSPECTING OPERATOR ${slotStr} // ${p.name} DEEP-DIVE TELEMETRY`;
     appState.calloutHighlight = false;
   }
   renderAll();
 }
 
 function setSquadView(pushUrl = true) {
+  if (appState.players.length === 1 && appState.ingestionMode !== 'spectator_allplayers') {
+    appState.soloViewDismissed = true;
+  }
   appState.viewMode = 'squad';
   if (pushUrl && window.history && window.history.replaceState) {
     const url = new URL(window.location.href);
@@ -699,12 +791,17 @@ function formatClock(seconds) {
 
 function renderTopHeader() {
   const isCT = appState.humanSide === 'CT';
+  const effectiveViewMode = getEffectiveViewMode();
+  const soloActive = isSoloClientActive();
   const classes = [
     isCT ? 'human-side-ct' : 'human-side-t',
     `res-${appState.displayRes}`
   ];
-  if (appState.viewMode === 'player') {
+  if (effectiveViewMode === 'player') {
     classes.push('view-mode-player');
+  }
+  if (soloActive) {
+    classes.push('solo-client-mode');
   }
   document.body.className = classes.join(' ');
 
@@ -714,13 +811,19 @@ function renderTopHeader() {
 
   const playerViewBtn = document.getElementById('btn-toggle-player-view');
   if (playerViewBtn) {
-    playerViewBtn.classList.toggle('active', appState.viewMode === 'player');
-    playerViewBtn.textContent = appState.viewMode === 'player' ? 'SQUAD VIEW' : 'PLAYER VIEW';
+    playerViewBtn.classList.toggle('active', effectiveViewMode === 'player');
+    playerViewBtn.textContent = effectiveViewMode === 'player' ? 'SQUAD VIEW' : (appState.players.length === 1 && appState.ingestionMode !== 'spectator_allplayers' ? 'SOLO VIEW' : 'PLAYER VIEW');
   }
 
   const squadCount = Math.max(1, appState.players.length);
   const botCount = appState.bots.length || 10;
   document.documentElement.style.setProperty('--active-player-count', String(squadCount));
+  document.body.dataset.squadSize = String(squadCount);
+  document.body.dataset.squadDensity = squadCount >= 8 ? 'ultra-compact' : squadCount >= 6 ? 'compact' : 'standard';
+
+  document.querySelectorAll('#modal-squad-size-btns button, #quick-squad-size-btns button').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.getAttribute('data-size')) === squadCount);
+  });
 
   document.getElementById('human-faction-code').textContent = appState.humanSide;
   const stackSubEl = document.getElementById('human-stack-sub');
@@ -1126,7 +1229,7 @@ function renderPlayersStage() {
 function renderUltrawideWing() {
   const wingEl = document.getElementById('ultrawide-tactical-wing');
   if (!wingEl) return;
-  if (appState.displayRes !== '5120x1440' || appState.viewMode === 'player') return;
+  if (appState.displayRes !== '5120x1440' || getEffectiveViewMode() === 'player') return;
 
   const botsHtml = appState.bots.map((b, i) => {
     const alive = b.health > 0;
@@ -1160,7 +1263,7 @@ function renderUltrawideWing() {
     const kd = (p.kills / Math.max(1, p.deaths)).toFixed(2);
     return `
       <div class="uw-lb-row" data-open-player="${p.origIdx}" title="Click to inspect ${p.name}">
-        <span class="uw-lb-rank">#0${rank + 1}</span>
+        <span class="uw-lb-rank">#${String(rank + 1).padStart(2, '0')}</span>
         <span class="uw-lb-name">${p.name}</span>
         <span class="uw-lb-stat">K/D <strong>${kd}</strong></span>
         <span class="uw-lb-stat">ADR <strong>${p.adr}</strong> &bull; <strong>${p.kills}K</strong></span>
@@ -1189,7 +1292,7 @@ function renderUltrawideWing() {
           </div>
           <div class="uw-mvp-stats">
             <div>
-              <div class="uw-panel-sub">SLOT 0${mvpIdx + 1} // ${currentSide} OPERATOR</div>
+              <div class="uw-panel-sub">SLOT ${String(mvpIdx + 1).padStart(2, '0')} // ${currentSide} OPERATOR</div>
               <div class="uw-mvp-name">${mvp.name}</div>
             </div>
             <div class="stats-grid-4">
@@ -1232,8 +1335,9 @@ function renderUltrawideWing() {
 function renderPlayerDetailView() {
   const detailEl = document.getElementById('player-detail-view');
   if (!detailEl) return;
-  if (appState.viewMode !== 'player') return;
+  if (getEffectiveViewMode() !== 'player') return;
 
+  const soloActive = isSoloClientActive();
   const safeIdx = Math.max(0, Math.min(appState.players.length - 1, appState.selectedPlayerIdx || 0));
   const p = appState.players[safeIdx] || appState.players[0];
   if (!p) return;
@@ -1257,17 +1361,41 @@ function renderPlayerDetailView() {
   const weaponSvg = getWeaponKillfeedSvg(weapon.id || weapon.name);
   const sidearm = p.secondaryWeapon || { id: 'deagle', name: 'Desert Eagle', skin: 'STANDARD', clip: 7, clipMax: 7, reserve: 35 };
   const sidearmSvg = getWeaponKillfeedSvg(sidearm.id || sidearm.name);
+  const knife = p.knifeWeapon || { id: 'knife', name: currentSide === 'CT' ? 'CT Tactical Knife' : 'Tactical Knife', skin: 'STANDARD ISSUE', state: 'holstered' };
+  const hasZeus = Boolean(p.hasZeus);
+
+  const flashedPct = Math.min(100, Math.round(((Number(p.flashed) || 0) / 255) * 100));
+  const smokedPct = Math.min(100, Math.round(((Number(p.smoked) || 0) / 255) * 100));
+  const burningPct = Math.min(100, Math.round(((Number(p.burning) || 0) / 255) * 100));
 
   const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
   const kpr = (p.kills / Math.max(1, appState.roundNumber)).toFixed(2);
   const survivalPct = Math.max(18, Math.min(96, Math.round(((appState.roundNumber - p.deaths) / Math.max(1, appState.roundNumber)) * 100)));
   const rating2 = (Number(kdRatio) * 0.48 + (p.adr / 100) * 0.44 + (p.hsPercent / 100) * 0.25).toFixed(2);
+  const totalDamage = typeof p.totalDamage === 'number' ? p.totalDamage : Math.round((p.adr || 0) * Math.max(1, appState.roundNumber));
+  const dmgPerKill = p.kills > 0 ? Math.round(totalDamage / p.kills) : totalDamage;
+  const mvps = typeof p.mvps === 'number' ? p.mvps : 0;
+  const matchScore = typeof p.score === 'number' ? p.score : (p.kills * 2 + p.assists);
+  const activityState = (p.activity || 'playing').toUpperCase();
+  const buyTier = p.equipValue >= 3800
+    ? 'FULL BUY'
+    : p.equipValue >= 2100
+      ? 'FORCE / HALF BUY'
+      : p.equipValue >= 900
+        ? 'LIGHT / PISTOL+'
+        : 'ECO / SAVE';
+
+  const gsiClients = (appState.clients && Array.isArray(appState.clients.gsiClients)) ? appState.clients.gsiClients : [];
+  const matchedClient = gsiClients.find(c => (p.id && c.steamId === p.id) || c.name === p.name) || gsiClients[0] || null;
+  const clientIpLabel = matchedClient ? matchedClient.ip : (appState.mode === 'gsi' ? 'LAN GSI' : 'LOCAL SIM');
+  const clientSteamLabel = matchedClient ? matchedClient.steamId : (p.id || 'SIM-OPERATOR-01');
+  const clientPackets = matchedClient ? (matchedClient.packetsReceived || 1) : 0;
 
   // Operator switcher tabs
   const tabsHtml = appState.players.map((op, idx) => `
     <button type="button" class="pd-tab-btn ${idx === safeIdx ? 'active' : ''}" data-select-player="${idx}">
       <span class="pd-tab-hp-dot ${op.health > 0 ? '' : 'dead'}"></span>
-      <span>0${idx + 1} // ${op.name}</span>
+      <span>${String(idx + 1).padStart(2, '0')} // ${op.name}</span>
       <span style="font-family:var(--font-mono); font-size:11px; opacity:0.8;">${op.health}HP</span>
     </button>
   `).join('');
@@ -1352,7 +1480,8 @@ function renderPlayerDetailView() {
     }
   }
   // Keep chronological order matching appState.killfeed
-  const orderedFeed = appState.killfeed.filter(k => seenLogIds.has(k.id)).slice(0, 4);
+  const maxLogItems = soloActive ? 7 : 4;
+  const orderedFeed = appState.killfeed.filter(k => seenLogIds.has(k.id)).slice(0, maxLogItems);
 
   const killLogHtml = orderedFeed.length === 0
     ? `<div class="pd-kill-log-item" style="justify-content:center; color:var(--text-muted);">AWAITING LIVE COMBAT ENGAGEMENTS...</div>`
@@ -1366,7 +1495,7 @@ function renderPlayerDetailView() {
       return `
         <div class="pd-kill-log-item ${isPersonal ? 'personal-engagement' : ''}" style="${isPersonal ? 'border-color: var(--squad-border); background: rgba(56, 189, 248, 0.08);' : ''}">
           <span style="display:inline-flex; align-items:center; gap:8px;">
-            ${isPersonal ? `<span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(56, 189, 248, 0.2); color:var(--squad-accent); font-weight:800;">OP 0${safeIdx + 1}</span>` : ''}
+            ${isPersonal ? `<span style="font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(56, 189, 248, 0.2); color:var(--squad-accent); font-weight:800;">OP ${String(safeIdx + 1).padStart(2, '0')}</span>` : ''}
             <strong style="color:${attackerColor};">${k.attacker}</strong>
             <span class="kill-weapon-icon" title="${k.weaponName}">${getWeaponKillfeedSvg(k.weaponName)}</span>
             ${k.isHs ? `<span class="kill-hs-icon" title="Headshot">${UTILITY_SVGS.headshot}</span>` : ''}
@@ -1376,48 +1505,69 @@ function renderPlayerDetailView() {
       `;
     }).join('');
 
+  const botsList = (appState.bots || []).slice(0, 10);
+  const aliveBotsCount = botsList.filter(b => b.health > 0).length;
+  const botSwarmHtml = botsList.map(b => {
+    const botAlive = b.health > 0;
+    return `
+      <div class="pd-solo-bot-row ${botAlive ? 'alive' : 'dead'}">
+        <div class="pd-solo-bot-head">
+          <span class="pd-solo-bot-name">${(b.name || 'BOT').replace('BOT ', '')}</span>
+          <span class="pd-solo-bot-hp">${botAlive ? `${b.health} HP` : 'KIA'}</span>
+        </div>
+        <div class="pd-solo-bot-bar">
+          <div class="pd-solo-bot-fill" style="width:${Math.max(0, Math.min(100, b.health || 0))}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
   const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
-  const detailSig = `${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
+  const detailSig = `${soloActive}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${mvps}|${matchScore}|${p.adr}|${totalDamage}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
   if (detailEl.dataset.detailSig === detailSig) return;
   detailEl.dataset.detailSig = detailSig;
 
   detailEl.innerHTML = `
     <div class="pd-top-bar">
       <div class="pd-operator-tabs">
-        <button type="button" class="ctrl-btn" data-back-squad="true" title="Return to 5-Player Squad Broadcast View">&larr; ALL SQUAD CARDS</button>
+        <button type="button" class="ctrl-btn" data-back-squad="true" title="Return to Squad Card View">&larr; ${soloActive ? 'SQUAD CARD VIEW' : 'ALL SQUAD CARDS'}</button>
+        ${soloActive ? `<span class="pd-solo-mode-badge">${appState.mode === 'gsi' ? 'SOLO CLIENT TELEMETRY // 1 PC LIVE' : 'SOLO OPERATOR TELEMETRY // 1v10'}</span>` : ''}
         ${tabsHtml}
       </div>
       <div class="pd-url-badge-row">
+        ${soloActive ? `<span class="pd-solo-meta-pill">STEAMID: <strong>${clientSteamLabel}</strong></span><span class="pd-solo-meta-pill">LINK: <strong>${clientIpLabel}</strong></span>` : ''}
         <a href="${standaloneUrl}" target="_blank" rel="noopener" class="pd-url-pill" title="Open dedicated URL for ${p.name} in a new window/monitor">
           DEDICATED PLAYER URL: <strong>${standaloneUrl} &#8599;</strong>
         </a>
       </div>
     </div>
 
-    <div class="pd-main-grid">
+    <div class="pd-main-grid ${soloActive ? 'pd-solo-grid' : ''}">
       <!-- LEFT COLUMN: FULL-HEIGHT 9:16 OPERATOR PORTRAIT CARD -->
       <article class="pd-hero-card" style="--card-model-bg: url('${bgUrl}');">
         <div class="pd-hero-top">
-          <span class="pd-slot-badge">OPERATOR 0${safeIdx + 1} // ${currentSide} FACTION</span>
+          <span class="pd-slot-badge">OPERATOR ${String(safeIdx + 1).padStart(2, '0')} // ${currentSide} FACTION</span>
           <button type="button" class="pd-skin-cycle-btn" data-cycle-bg="${safeIdx}">CYCLE SKIN (${activeBgId}/11)</button>
         </div>
 
         <div class="pd-hero-bottom">
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <span class="status-pill ${isAlive ? 'alive-ready' : 'dead-tag'}">${isAlive ? 'COMBAT READY // LIVE' : 'ELIMINATED // KIA'}</span>
+            ${soloActive ? `<span class="status-pill" style="background:rgba(15,23,42,0.8); border-color:var(--squad-border); color:var(--squad-accent);">${activityState}</span>` : ''}
             ${p.hasC4 ? `<span class="status-pill c4-carrier">C4 CARRIER</span>` : ''}
             ${p.defuseKit ? `<span class="status-pill defuse-kit">${kitPillLabel}</span>` : ''}
+            ${hasZeus ? `<span class="status-pill" style="background:rgba(250,204,21,0.16); border-color:rgba(250,204,21,0.5); color:#fde047;">ZEUS x27</span>` : ''}
           </div>
           <h2 class="pd-hero-callsign" data-edit-callsign="${safeIdx}" title="Click to edit callsign">${p.name}</h2>
           <div class="pd-hero-skin-label">${bgItem.label}</div>
         </div>
       </article>
 
-      <!-- CENTER COLUMN: LIVE VITALS, PRIMARY/SECONDARY WEAPONS & UTILITY BELT -->
+      <!-- CENTER COLUMN: LIVE VITALS, SENSORY STATUS, ARSENAL & ECONOMY -->
       <div class="pd-column">
         <div class="pd-module">
           <div class="pd-module-header">
-            <span class="pd-module-title">BIOMETRIC &amp; ARMOR TELEMETRY</span>
+            <span class="pd-module-title">BIOMETRIC &amp; SENSORY TELEMETRY</span>
             <span class="pd-module-sub">${isAlive ? 'ACTIVE HEARTBEAT LOCKED' : 'FLATLINED THIS ROUND'}</span>
           </div>
           <div class="pd-vitals-big-row">
@@ -1442,6 +1592,24 @@ function renderPlayerDetailView() {
               </div>
             </div>
           </div>
+          ${soloActive ? `
+          <div class="pd-sensory-row">
+            <div class="pd-sensory-chip ${flashedPct > 5 ? 'active-flash' : ''}">
+              <span class="pd-sensory-label">FLASHED</span>
+              <div class="pd-sensory-bar"><div class="pd-sensory-fill flash" style="width:${flashedPct}%"></div></div>
+              <span class="pd-sensory-val">${flashedPct}%</span>
+            </div>
+            <div class="pd-sensory-chip ${smokedPct > 5 ? 'active-smoke' : ''}">
+              <span class="pd-sensory-label">SMOKED</span>
+              <div class="pd-sensory-bar"><div class="pd-sensory-fill smoke" style="width:${smokedPct}%"></div></div>
+              <span class="pd-sensory-val">${smokedPct}%</span>
+            </div>
+            <div class="pd-sensory-chip ${burningPct > 5 ? 'active-burn' : ''}">
+              <span class="pd-sensory-label">BURNING</span>
+              <div class="pd-sensory-bar"><div class="pd-sensory-fill burn" style="width:${burningPct}%"></div></div>
+              <span class="pd-sensory-val">${burningPct}%</span>
+            </div>
+          </div>` : ''}
         </div>
 
         <div class="pd-module fill-space">
@@ -1468,18 +1636,27 @@ function renderPlayerDetailView() {
           </div>
 
           <div class="pd-weapon-showcase" style="padding:10px 14px;">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-              <div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div style="min-width:0;">
                 <div class="pd-module-sub">SECONDARY SIDEARM</div>
-                <div style="font-family:var(--font-display); font-size:22px; font-weight:800;">${sidearm.name} <span style="font-family:var(--font-mono); font-size:11px; color:var(--squad-accent);">// ${sidearm.skin || 'ISSUE'}</span></div>
+                <div style="font-family:var(--font-display); font-size:22px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sidearm.name} <span style="font-family:var(--font-mono); font-size:11px; color:var(--squad-accent);">// ${sidearm.skin || 'ISSUE'}</span></div>
               </div>
-              <div style="width:120px; height:38px; display:flex; align-items:center; justify-content:center;">${sidearmSvg}</div>
-              <div style="font-family:var(--font-mono); font-size:20px; font-weight:800;">${sidearm.clip} <span style="font-size:12px; color:var(--text-secondary);">/ ${sidearm.reserve}</span></div>
+              <div style="width:110px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${sidearmSvg}</div>
+              <div style="font-family:var(--font-mono); font-size:20px; font-weight:800; flex-shrink:0;">${sidearm.clip} <span style="font-size:12px; color:var(--text-secondary);">/ ${sidearm.reserve}</span></div>
             </div>
           </div>
 
+          ${soloActive ? `
+          <div class="pd-solo-melee-row">
+            <div class="pd-solo-melee-info">
+              <span class="pd-module-sub">MELEE // KNIFE</span>
+              <span class="pd-solo-melee-name">${knife.name}</span>
+            </div>
+            <span class="pd-solo-melee-skin">${knife.skin || 'STANDARD ISSUE'}</span>
+          </div>` : ''}
+
           <div>
-            <div class="pd-module-sub" style="margin-bottom:6px;">TACTICAL UTILITY &amp; ECONOMY</div>
+            <div class="pd-module-sub" style="margin-bottom:6px;">TACTICAL UTILITY &amp; ECONOMY ${soloActive ? `// <span style="color:var(--squad-accent);">${buyTier}</span>` : ''}</div>
             <div class="utility-belt-row" style="margin-bottom:10px;">
               ${grenadeBeltHtml}
               ${gearSlotHtml}
@@ -1497,14 +1674,14 @@ function renderPlayerDetailView() {
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: PRO ANALYTICS MATRIX, ROUND DAMAGE CHART & PERSONAL COMBAT LOG -->
+      <!-- RIGHT COLUMN: PRO ANALYTICS MATRIX & ROUND DAMAGE CHART -->
       <div class="pd-column">
         <div class="pd-module">
           <div class="pd-module-header">
             <span class="pd-module-title">PRO COMBAT TELEMETRY MATRIX</span>
             <span class="pd-module-sub">HLTV-STYLE IMPACT RATING ${rating2}</span>
           </div>
-          <div class="pd-stats-grid-8">
+          <div class="${soloActive ? 'pd-stats-grid-12' : 'pd-stats-grid-8'}">
             <div class="pd-stat-card accent">
               <span class="pd-stat-label">KILLS</span>
               <span class="pd-stat-val">${p.kills}</span>
@@ -1537,6 +1714,23 @@ function renderPlayerDetailView() {
               <span class="pd-stat-label">SURVIVAL</span>
               <span class="pd-stat-val">${survivalPct}%</span>
             </div>
+            ${soloActive ? `
+            <div class="pd-stat-card accent">
+              <span class="pd-stat-label">MVPs</span>
+              <span class="pd-stat-val">${mvps}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">SCORE</span>
+              <span class="pd-stat-val">${matchScore}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">TOTAL DMG</span>
+              <span class="pd-stat-val">${totalDamage}</span>
+            </div>
+            <div class="pd-stat-card">
+              <span class="pd-stat-label">DMG / KILL</span>
+              <span class="pd-stat-val">${dmgPerKill}</span>
+            </div>` : ''}
           </div>
         </div>
 
@@ -1549,6 +1743,7 @@ function renderPlayerDetailView() {
             ${roundBarsHtml}
           </div>
 
+          ${soloActive ? '' : `
           <div style="margin-top:8px;">
             <div class="pd-module-header" style="margin-bottom:8px;">
               <span class="pd-module-title" style="font-size:18px;">RECENT ENGAGEMENT LOG</span>
@@ -1557,9 +1752,37 @@ function renderPlayerDetailView() {
             <div class="pd-kill-log-list">
               ${killLogHtml}
             </div>
-          </div>
+          </div>`}
         </div>
       </div>
+
+      ${soloActive ? `
+      <!-- 4TH COLUMN (SOLO MODE): OPPOSITION BOT SWARM, CLIENT LINK & EXTENDED ENGAGEMENT LOG -->
+      <div class="pd-column">
+        <div class="pd-module">
+          <div class="pd-module-header">
+            <span class="pd-module-title">OPPOSITION THREAT MATRIX</span>
+            <span class="pd-module-sub">${aliveBotsCount} / ${botsList.length || 10} ALIVE</span>
+          </div>
+          <div class="pd-solo-bot-grid">
+            ${botSwarmHtml}
+          </div>
+        </div>
+
+        <div class="pd-module fill-space">
+          <div class="pd-module-header">
+            <span class="pd-module-title">LIVE ENGAGEMENT LOG</span>
+            <span class="pd-module-sub">SOLO COMBAT FEED</span>
+          </div>
+          <div class="pd-kill-log-list pd-solo-kill-log">
+            ${killLogHtml}
+          </div>
+          <div class="pd-solo-client-footer">
+            <span>SOURCE: <strong>${appState.mode === 'gsi' ? 'CS2 GSI LIVE' : 'SIMULATION'}</strong></span>
+            <span>PACKETS: <strong>${clientPackets}</strong></span>
+          </div>
+        </div>
+      </div>` : ''}
     </div>
   `;
 }
@@ -1880,15 +2103,22 @@ function triggerSwapSides() {
 }
 
 function setSquadSize(newSize) {
-  const count = Math.max(1, Math.min(5, Number(newSize) || 5));
+  const count = Math.max(1, Math.min(10, Number(newSize) || 5));
   appState.targetSquadSize = count;
+  appState.ingestionMode = 'simulation';
+  if (count === 1) {
+    appState.soloViewDismissed = false;
+  }
   appState.players = createInitialSimSquad(appState.humanSide, count);
   appState.damageTrails = appState.players.map(p => p.health);
-  appState.calloutText = `SQUAD FORMAT UPDATED // ${count} HUMANS VS 10 BOTS (${count}v10)`;
+  if (appState.selectedPlayerIdx >= count) {
+    appState.selectedPlayerIdx = count - 1;
+  }
+  appState.calloutText = `SQUAD FORMAT UPDATED // ${count} HUMAN${count === 1 ? '' : 'S'} VS 10 BOTS (${count}v10)`;
   appState.calloutHighlight = false;
 
-  const modalBtns = document.querySelectorAll('#modal-squad-size-btns button');
-  modalBtns.forEach(btn => {
+  const sizeBtns = document.querySelectorAll('#modal-squad-size-btns button, #quick-squad-size-btns button');
+  sizeBtns.forEach(btn => {
     btn.classList.toggle('active', Number(btn.getAttribute('data-size')) === count);
   });
 
@@ -1903,9 +2133,14 @@ function applyServerGsiState(serverState) {
     return;
   }
 
+  const prevPlayerCount = appState.players.length;
+  const prevMode = appState.mode;
+  appState.ingestionMode = serverState.ingestionMode || 'multi_client';
+
   // When switching from demo simulation mode to live GSI mode, clear demo simulation killfeed items
   if (appState.mode !== 'gsi') {
     appState.mode = 'gsi';
+    appState.soloViewDismissed = false;
     appState.killfeed = Array.isArray(serverState.killfeed) ? [...serverState.killfeed].slice(0, 8) : [];
     appState.killfeed.forEach(k => {
       if (k && k.id) appState.seenServerKillIds.add(k.id);
@@ -1926,7 +2161,7 @@ function applyServerGsiState(serverState) {
     }
   }
 
-  const detectedCount = Math.max(1, Math.min(5, serverState.humanPlayers.length));
+  const detectedCount = Math.max(1, Math.min(10, serverState.humanPlayers.length));
   const badge = document.getElementById('gsi-source-badge');
   const badgeText = document.getElementById('gsi-source-text');
   badge.classList.add('gsi-live');
@@ -1958,11 +2193,11 @@ function applyServerGsiState(serverState) {
     }
   }
 
-  // Dynamically adapt to the exact number of detected human players (e.g. 2v10, 3v10, 5v10)
-  const baseDefaults = createInitialSimSquad(appState.humanSide, 5);
+  // Dynamically adapt to the exact number of detected human players (1v10 up to 10v10)
+  const baseDefaults = createInitialSimSquad(appState.humanSide, 10);
   const currRound = Math.max(1, Number(appState.roundNumber) || 1);
 
-  appState.players = serverState.humanPlayers.slice(0, 5).map((gp, idx) => {
+  appState.players = serverState.humanPlayers.slice(0, 10).map((gp, idx) => {
     const pKey = gp.id || gp.name || `slot-${idx}`;
     const prevK = appState.prevGsiKills[pKey];
     const prevRK = appState.prevGsiRoundKills[pKey];
@@ -2185,6 +2420,9 @@ function applyServerGsiState(serverState) {
     };
   });
   appState.targetSquadSize = appState.players.length;
+  if (prevMode === 'gsi' && prevPlayerCount > 1 && appState.players.length === 1) {
+    appState.soloViewDismissed = false;
+  }
 
   while (appState.damageTrails.length < appState.players.length) {
     appState.damageTrails.push(100);
@@ -2382,7 +2620,7 @@ function renderClientsAndLogsPanel() {
       gsiListEl.innerHTML = gsiClients.map(c => {
         const modeLabel = c.mode === 'spectator_allplayers'
           ? 'SPECTATOR ALLPLAYERS'
-          : c.slot ? `SLOT 0${c.slot} (${c.team || 'CT'})` : 'MENU / STANDBY';
+          : c.slot ? `SLOT ${String(c.slot).padStart(2, '0')} (${c.team || 'CT'})` : 'MENU / STANDBY';
         return `
           <div class="client-row">
             <div class="client-row-main">
@@ -2611,12 +2849,16 @@ function initRosterEditor() {
     const savedRoster = localStorage.getItem('cs2_custom_roster');
     if (savedRoster) {
       const parsed = JSON.parse(savedRoster);
-      if (Array.isArray(parsed) && parsed.length === 5) {
-        appState.customCallsigns = parsed.map((item, i) => ({
-          name: item.name || DEFAULT_CALLSIGNS[i].name,
-          ctBg: Number(item.ctBg) || DEFAULT_CALLSIGNS[i].ctBg,
-          tBg: Number(item.tBg) || DEFAULT_CALLSIGNS[i].tBg
-        }));
+      if (Array.isArray(parsed) && parsed.length >= 1) {
+        appState.customCallsigns = DEFAULT_CALLSIGNS.map((def, i) => {
+          const item = parsed[i];
+          if (!item) return { ...def };
+          return {
+            name: item.name || def.name,
+            ctBg: Number(item.ctBg) || def.ctBg,
+            tBg: Number(item.tBg) || def.tBg
+          };
+        });
         appState.players.forEach((p, i) => {
           if (appState.customCallsigns[i] && appState.mode === 'simulation') {
             p.name = appState.customCallsigns[i].name;
@@ -2647,6 +2889,7 @@ function initRosterEditor() {
 
   const grid = document.getElementById('roster-editor-grid');
   grid.innerHTML = appState.customCallsigns.map((c, idx) => {
+    const slotStr = String(idx + 1).padStart(2, '0');
     const ctBgOptions = CT_CARD_BACKGROUNDS.map(bg =>
       `<option value="${bg.id}" ${Number(c.ctBg || DEFAULT_CALLSIGNS[idx].ctBg) === bg.id ? 'selected' : ''}>${bg.label}</option>`
     ).join('');
@@ -2658,7 +2901,7 @@ function initRosterEditor() {
     return `
       <div class="roster-slot-card">
         <div class="roster-input-group">
-          <label for="callsign-input-${idx}">OPERATOR 0${idx + 1} CALLSIGN</label>
+          <label for="callsign-input-${idx}">OPERATOR ${slotStr} CALLSIGN</label>
           <input type="text" id="callsign-input-${idx}" value="${c.name}" maxlength="14" />
         </div>
         <div class="roster-input-group">
@@ -2682,7 +2925,8 @@ function initRosterEditor() {
     const tBgSelect = document.getElementById(`t-bg-select-${idx}`);
 
     nameInput.addEventListener('input', (e) => {
-      const val = e.target.value.trim().toUpperCase() || `OP 0${idx + 1}`;
+      const slotStr = String(idx + 1).padStart(2, '0');
+      const val = e.target.value.trim().toUpperCase() || `OP ${slotStr}`;
       appState.customCallsigns[idx].name = val;
       if (appState.players[idx]) {
         appState.players[idx].name = val;
@@ -2712,19 +2956,20 @@ function initRosterEditor() {
 function cyclePlayerCardSkin(slotIdx) {
   const cfg = appState.customCallsigns[slotIdx];
   if (!cfg) return;
+  const slotStr = String(slotIdx + 1).padStart(2, '0');
   const isT = appState.humanSide === 'T';
   if (isT) {
     cfg.tBg = ((Number(cfg.tBg) || 1) % 11) + 1;
     const sel = document.getElementById(`t-bg-select-${slotIdx}`);
     if (sel) sel.value = String(cfg.tBg);
     const skinInfo = T_CARD_BACKGROUNDS.find(b => b.id === cfg.tBg);
-    appState.calloutText = `OP 0${slotIdx + 1} (${cfg.name}) T SKIN -> ${skinInfo ? skinInfo.label : cfg.tBg}`;
+    appState.calloutText = `OP ${slotStr} (${cfg.name}) T SKIN -> ${skinInfo ? skinInfo.label : cfg.tBg}`;
   } else {
     cfg.ctBg = ((Number(cfg.ctBg) || 1) % 11) + 1;
     const sel = document.getElementById(`ct-bg-select-${slotIdx}`);
     if (sel) sel.value = String(cfg.ctBg);
     const skinInfo = CT_CARD_BACKGROUNDS.find(b => b.id === cfg.ctBg);
-    appState.calloutText = `OP 0${slotIdx + 1} (${cfg.name}) CT SKIN -> ${skinInfo ? skinInfo.label : cfg.ctBg}`;
+    appState.calloutText = `OP ${slotStr} (${cfg.name}) CT SKIN -> ${skinInfo ? skinInfo.label : cfg.ctBg}`;
   }
   appState.calloutHighlight = false;
   saveCustomRoster();
@@ -2827,7 +3072,7 @@ function bindControls() {
   const btnPlayerView = document.getElementById('btn-toggle-player-view');
   if (btnPlayerView) {
     btnPlayerView.addEventListener('click', () => {
-      if (appState.viewMode === 'player') {
+      if (getEffectiveViewMode() === 'player') {
         setSquadView();
       } else {
         openPlayerDetailView(appState.selectedPlayerIdx || 0);
@@ -2853,13 +3098,12 @@ function bindControls() {
   const btnSquadSize = document.getElementById('btn-squad-size');
   if (btnSquadSize) {
     btnSquadSize.addEventListener('click', () => {
-      const cycleMap = { 5: 2, 2: 3, 3: 4, 4: 5, 1: 2 };
-      const nextSize = cycleMap[appState.players.length] || 5;
+      const nextSize = (appState.players.length % 10) + 1;
       setSquadSize(nextSize);
     });
   }
 
-  document.querySelectorAll('#modal-squad-size-btns button').forEach(btn => {
+  document.querySelectorAll('#modal-squad-size-btns button, #quick-squad-size-btns button').forEach(btn => {
     btn.addEventListener('click', () => {
       const size = Number(btn.getAttribute('data-size')) || 5;
       setSquadSize(size);
