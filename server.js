@@ -5,6 +5,9 @@ const os = require('node:os');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const HISTORY_FILE = path.join(DATA_DIR, 'performance-history.json');
+const MAX_HISTORY_SESSIONS = 250;
 
 // Connected SSE broadcast clients (res -> client metadata)
 const sseClients = new Set();
@@ -31,6 +34,229 @@ function formatTimestamp(ms = Date.now()) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
+
+/* ==========================================================================
+   PERSISTENT PERFORMANCE HISTORY & TRENDING STORE
+   ========================================================================== */
+let performanceHistory = [];
+let lastAutoRecordedMatchSig = null;
+
+function ensureDataDir() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (_) {}
+}
+
+function loadPerformanceHistory() {
+  ensureDataDir();
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const raw = fs.readFileSync(HISTORY_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        performanceHistory = parsed.slice(-MAX_HISTORY_SESSIONS);
+      } else if (parsed && Array.isArray(parsed.sessions)) {
+        performanceHistory = parsed.sessions.slice(-MAX_HISTORY_SESSIONS);
+      }
+    }
+  } catch (err) {
+    console.warn('[CS2-DASH] Could not load performance history:', err.message);
+    performanceHistory = [];
+  }
+}
+
+function savePerformanceHistory() {
+  ensureDataDir();
+  try {
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify({ sessions: performanceHistory.slice(-MAX_HISTORY_SESSIONS) }, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[CS2-DASH] Could not save performance history:', err.message);
+  }
+}
+
+function normalizeHistoryPlayer(p, roundCount = 1) {
+  const kills = Number(p.kills) || 0;
+  const deaths = Number(p.deaths) || 0;
+  const assists = Number(p.assists) || 0;
+  const adr = Number(p.adr) || 0;
+  const hsPercent = Number(p.hsPercent) || 0;
+  const mvps = Number(p.mvps) || 0;
+  const score = typeof p.score === 'number' ? p.score : (kills * 2 + assists);
+  const kd = Number((kills / Math.max(1, deaths)).toFixed(2));
+  const kpr = Number((kills / Math.max(1, roundCount)).toFixed(2));
+  const rating = Number((kd * 0.48 + (adr / 100) * 0.44 + (hsPercent / 100) * 0.25).toFixed(2));
+  return {
+    steamId: String(p.id || p.steamId || p.name || 'UNKNOWN'),
+    name: String(p.name || 'OPERATOR'),
+    team: p.team || 'CT',
+    kills,
+    deaths,
+    assists,
+    kd,
+    adr,
+    hsPercent,
+    kpr,
+    mvps,
+    score,
+    rating,
+    totalDamage: typeof p.totalDamage === 'number' ? p.totalDamage : Math.round(adr * Math.max(1, roundCount))
+  };
+}
+
+function recordPerformanceSession(input = {}) {
+  const playersInput = Array.isArray(input.players) && input.players.length > 0
+    ? input.players
+    : Array.from(gsiStore.humanPlayersMap.values());
+
+  if (playersInput.length === 0) {
+    return null;
+  }
+
+  const mapName = String(input.map || gsiStore.map.name || 'de_mirage');
+  const round = Math.max(1, Number(input.round || gsiStore.map.round) || 1);
+  const teamSide = (input.teamSide || gsiStore.humanTeamSide || 'CT') === 'T' ? 'T' : 'CT';
+  const ctScore = typeof input.ctScore === 'number' ? input.ctScore : (gsiStore.map.ctScore || 0);
+  const tScore = typeof input.tScore === 'number' ? input.tScore : (gsiStore.map.tScore || 0);
+  const humanScore = typeof input.humanScore === 'number' ? input.humanScore : (teamSide === 'CT' ? ctScore : tScore);
+  const botScore = typeof input.botScore === 'number' ? input.botScore : (teamSide === 'CT' ? tScore : ctScore);
+  const result = input.result || (humanScore > botScore ? 'WIN' : humanScore < botScore ? 'LOSS' : 'TIE');
+
+  const session = {
+    id: `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: Date.now(),
+    timeFormatted: formatTimestamp(Date.now()),
+    map: mapName,
+    mode: input.mode || (gsiStore.ingestionMode === 'waiting' ? 'simulation' : 'gsi'),
+    teamSide,
+    humanScore,
+    botScore,
+    result,
+    round,
+    players: playersInput.map(p => normalizeHistoryPlayer(p, round))
+  };
+
+  performanceHistory.push(session);
+  if (performanceHistory.length > MAX_HISTORY_SESSIONS) {
+    performanceHistory = performanceHistory.slice(-MAX_HISTORY_SESSIONS);
+  }
+  savePerformanceHistory();
+  return session;
+}
+
+function buildTrendsResponse(playerQuery = '', limit = 30) {
+  const maxItems = Math.max(5, Math.min(200, Number(limit) || 30));
+  const queryNorm = String(playerQuery || '').trim().toLowerCase();
+
+  const knownPlayersMap = new Map();
+  for (const sess of performanceHistory) {
+    for (const pl of (sess.players || [])) {
+      const key = pl.steamId || pl.name;
+      if (!knownPlayersMap.has(key)) {
+        knownPlayersMap.set(key, { key, steamId: pl.steamId, name: pl.name, matches: 0 });
+      }
+      const ref = knownPlayersMap.get(key);
+      ref.name = pl.name;
+      ref.matches += 1;
+    }
+  }
+
+  const matchedSessions = [];
+  for (const sess of performanceHistory) {
+    const players = sess.players || [];
+    if (players.length === 0) continue;
+
+    let targetPlayer = null;
+    if (queryNorm && queryNorm !== 'all') {
+      targetPlayer = players.find(pl =>
+        String(pl.steamId || '').toLowerCase() === queryNorm ||
+        String(pl.name || '').toLowerCase() === queryNorm
+      );
+      if (!targetPlayer) continue;
+    } else {
+      // Aggregate or pick primary player (prefer solo player or top rating)
+      if (players.length === 1) {
+        targetPlayer = players[0];
+      } else {
+        const count = players.length;
+        const avg = (fn) => players.reduce((acc, pl) => acc + fn(pl), 0) / count;
+        targetPlayer = {
+          steamId: 'SQUAD',
+          name: `SQUAD AVG (${count})`,
+          kills: Math.round(avg(p => p.kills)),
+          deaths: Math.round(avg(p => p.deaths)),
+          assists: Math.round(avg(p => p.assists)),
+          kd: Number(avg(p => p.kd).toFixed(2)),
+          adr: Math.round(avg(p => p.adr)),
+          hsPercent: Math.round(avg(p => p.hsPercent)),
+          kpr: Number(avg(p => p.kpr).toFixed(2)),
+          mvps: Math.round(avg(p => p.mvps)),
+          score: Math.round(avg(p => p.score)),
+          rating: Number(avg(p => p.rating).toFixed(2)),
+          totalDamage: Math.round(avg(p => p.totalDamage))
+        };
+      }
+    }
+
+    matchedSessions.push({
+      id: sess.id,
+      timestamp: sess.timestamp,
+      timeFormatted: sess.timeFormatted || formatTimestamp(sess.timestamp),
+      map: sess.map,
+      mode: sess.mode,
+      teamSide: sess.teamSide,
+      humanScore: sess.humanScore,
+      botScore: sess.botScore,
+      result: sess.result,
+      round: sess.round,
+      metrics: targetPlayer
+    });
+  }
+
+  const recent = matchedSessions.slice(-maxItems);
+  const count = recent.length;
+  const avgField = (arr, fn) => arr.length ? arr.reduce((s, x) => s + fn(x), 0) / arr.length : 0;
+
+  const recent5 = recent.slice(-5);
+  const prev5 = recent.slice(-10, -5);
+
+  const avgAdr = Math.round(avgField(recent, x => x.metrics.adr));
+  const avgKd = Number(avgField(recent, x => x.metrics.kd).toFixed(2));
+  const avgHs = Math.round(avgField(recent, x => x.metrics.hsPercent));
+  const avgRating = Number(avgField(recent, x => x.metrics.rating).toFixed(2));
+  const wins = recent.filter(x => x.result === 'WIN').length;
+
+  const adrDelta = prev5.length
+    ? Math.round(avgField(recent5, x => x.metrics.adr) - avgField(prev5, x => x.metrics.adr))
+    : 0;
+  const kdDelta = prev5.length
+    ? Number((avgField(recent5, x => x.metrics.kd) - avgField(prev5, x => x.metrics.kd)).toFixed(2))
+    : 0;
+  const ratingDelta = prev5.length
+    ? Number((avgField(recent5, x => x.metrics.rating) - avgField(prev5, x => x.metrics.rating)).toFixed(2))
+    : 0;
+
+  return {
+    totalRecorded: performanceHistory.length,
+    players: Array.from(knownPlayersMap.values()),
+    summary: {
+      matches: count,
+      wins,
+      winRate: count > 0 ? Math.round((wins / count) * 100) : 0,
+      avgAdr,
+      avgKd,
+      avgHs,
+      avgRating,
+      bestAdr: recent.reduce((m, x) => Math.max(m, x.metrics.adr), 0),
+      bestKills: recent.reduce((m, x) => Math.max(m, x.metrics.kills), 0),
+      adrDelta,
+      kdDelta,
+      ratingDelta
+    },
+    series: recent
+  };
+}
+
+loadPerformanceHistory();
 
 function getClientsSummary() {
   const now = Date.now();
@@ -619,6 +845,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
 
   // 1. Map & Scores
   if (payload.map) {
+    const prevPhase = gsiStore.map.phase;
     gsiStore.map.name = payload.map.name || gsiStore.map.name;
     gsiStore.map.phase = payload.map.phase || gsiStore.map.phase;
     gsiStore.map.round = typeof payload.map.round === 'number' ? payload.map.round + 1 : gsiStore.map.round;
@@ -627,6 +854,21 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
     }
     if (payload.map.team_t && typeof payload.map.team_t.score === 'number') {
       gsiStore.map.tScore = payload.map.team_t.score;
+    }
+    if (gsiStore.map.phase === 'gameover' && prevPhase !== 'gameover') {
+      const matchSig = `${gsiStore.map.name}|${gsiStore.map.ctScore}-${gsiStore.map.tScore}|${gsiStore.map.round}`;
+      if (matchSig !== lastAutoRecordedMatchSig) {
+        lastAutoRecordedMatchSig = matchSig;
+        const saved = recordPerformanceSession({ mode: 'gsi' });
+        if (saved) {
+          recordServerLog({
+            level: 'INFO',
+            category: 'system',
+            title: `MATCH TELEMETRY ARCHIVED // ${saved.map.toUpperCase()}`,
+            message: `Saved ${saved.result} (${saved.humanScore}-${saved.botScore}) for ${saved.players.length} operator(s) to performance trends`
+          });
+        }
+      }
     }
   }
 
@@ -995,6 +1237,10 @@ function broadcastGsiUpdate() {
 }
 
 function getLocalIpAddress() {
+  const overrideIp = process.env.HOST_IP || process.env.SYNOLOGY_IP;
+  if (overrideIp && String(overrideIp).trim()) {
+    return String(overrideIp).trim();
+  }
   const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]) {
@@ -1168,6 +1414,52 @@ const server = http.createServer((req, res) => {
       'Content-Disposition': 'attachment; filename="gamestate_integration_cs2dash.cfg"'
     });
     res.end(cfg);
+    return;
+  }
+
+  // Healthcheck Endpoint for Docker / Synology Container Manager
+  if (req.method === 'GET' && url.pathname === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), historyCount: performanceHistory.length }));
+    return;
+  }
+
+  // Performance Trends Over Time API
+  if (req.method === 'GET' && url.pathname === '/api/trends') {
+    const playerParam = url.searchParams.get('player') || '';
+    const limitParam = url.searchParams.get('limit') || '30';
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(buildTrendsResponse(playerParam, limitParam)));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/trends/snapshot') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        const saved = recordPerformanceSession(parsed);
+        if (!saved) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'No player telemetry available to snapshot' }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, session: saved, totalRecorded: performanceHistory.length }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/trends/clear') {
+    performanceHistory = [];
+    savePerformanceHistory();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

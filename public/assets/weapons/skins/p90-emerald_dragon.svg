@@ -1,0 +1,22 @@
+<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skin-grad" x1="0%" y1="0%" x2="100%" y2="25%">
+      <stop offset="0%" stop-color="#064e3b"/><stop offset="50%" stop-color="#10b981"/><stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+    <clipPath id="gun-clip">
+      <path d="M38 30H64V22H172L178 14H220L224 26H236V32H254V39H236V58L222 64H194L188 52H164L156 68H132L136 50H94L88 66H38V30Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#gun-clip)">
+    <rect x="0" y="0" width="320" height="90" fill="url(#skin-grad)"/>
+    <circle cx="150" cy="40" r="24" fill="#fde047" opacity="0.35"/>
+    <rect x="0" y="0" width="320" height="90" fill="url(#sheen)" opacity="0.35"/>
+  </g>
+  <path d="M38 30H64V22H172L178 14H220L224 26H236V32H254V39H236V58L222 64H194L188 52H164L156 68H132L136 50H94L88 66H38V30Z" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.9"/>
+  <path d="M56 40H84L80 54H56V40ZM102 38H132L128 50H102V38ZM168 38H190L186 48H168V38Z" fill="#080c13"/>
+</svg>

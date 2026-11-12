@@ -1,0 +1,22 @@
+<svg viewBox="0 0 320 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skin-grad" x1="0%" y1="0%" x2="100%" y2="25%">
+      <stop offset="0%" stop-color="#f8fafc"/><stop offset="55%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+    <clipPath id="gun-clip">
+      <path d="M14 33L20 29H62L68 33H82L86 22H98L102 26H160L164 24H226L234 17H241L244 32H284V30H300V39H284V37H244V42H228L224 46H162L156 47L166 77L147 80L135 47H118L112 56H98L95 47H91L80 70H64L73 46H62L52 59L18 53L14 46V33Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#gun-clip)">
+    <rect x="0" y="0" width="320" height="90" fill="url(#skin-grad)"/>
+    <polygon points="0,0 115,0 85,90 0,90" fill="#f97316"/><polygon points="105,0 135,0 105,90 75,90" fill="#111827"/><polygon points="195,0 250,0 220,90 165,90" fill="#f97316"/><polygon points="245,0 264,0 234,90 215,90" fill="#0f172a"/>
+    <rect x="0" y="0" width="320" height="90" fill="url(#sheen)" opacity="0.35"/>
+  </g>
+  <path d="M14 33L20 29H62L68 33H82L86 22H98L102 26H160L164 24H226L234 17H241L244 32H284V30H300V39H284V37H244V42H228L224 46H162L156 47L166 77L147 80L135 47H118L112 56H98L95 47H91L80 70H64L73 46H62L52 59L18 53L14 46V33Z" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.9"/>
+  <path d="M28 36H52L48 46H28V36ZM90 30H154V35H90V30ZM170 30H218V34H170V30ZM170 38H218V42H170V38ZM99 47H110L107 53H99V47Z" fill="#080c13"/>
+</svg>

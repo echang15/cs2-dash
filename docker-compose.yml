@@ -1,0 +1,20 @@
+services:
+  cs2-dash:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cs2-dash:latest
+    container_name: cs2-dash
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATA_DIR=/app/data
+      # Set this to your Synology NAS LAN IP so /gamestate_integration_cs2dash.cfg
+      # and the UI connection banner show your NAS IP instead of the Docker bridge IP
+      # - HOST_IP=192.168.1.50
+      # Optional: set timezone for match history timestamps
+      - TZ=America/New_York
+    volumes:
+      - ./data:/app/data

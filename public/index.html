@@ -164,6 +164,8 @@
             </div>
           </div>
 
+          <button type="button" class="ctrl-btn" id="btn-open-trends" title="View Historical Performance Trends Over Time">TRENDS</button>
+
           <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
           <div class="sim-hover-container" id="sim-hover-container">
             <button type="button" class="sim-hover-trigger" id="sim-hover-trigger" aria-haspopup="true">
@@ -307,6 +309,64 @@
     </div>
   </div>
 
+  <!-- Performance Trends Over Time Modal -->
+  <div class="modal-backdrop" id="trends-modal" hidden>
+    <div class="modal-panel trends-modal-panel">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">PERFORMANCE TRENDS OVER TIME</h3>
+          <p class="modal-sub">TRACK ADR, K/D RATIO, HEADSHOT % &amp; IMPACT RATING ACROSS RECORDED MATCHES</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <select id="trends-player-select" class="trends-select" title="Filter trends by operator"></select>
+          <button type="button" class="ctrl-btn active" id="btn-snapshot-trends" title="Save current live or simulated match stats as a snapshot">RECORD SNAPSHOT</button>
+          <button type="button" class="ctrl-btn danger" id="btn-clear-trends" title="Clear all recorded history">CLEAR</button>
+          <button type="button" class="ctrl-btn" id="btn-close-trends">CLOSE</button>
+        </div>
+      </div>
+
+      <div class="trends-kpi-strip" id="trends-kpi-strip"></div>
+
+      <div class="trends-charts-grid">
+        <div class="trends-chart-card">
+          <div class="trends-chart-header">
+            <span class="trends-chart-title">ADR &amp; IMPACT RATING TREND</span>
+            <span class="trends-chart-legend"><i class="dot-adr"></i> ADR &nbsp;&bull;&nbsp; <i class="dot-rating"></i> RATING x100</span>
+          </div>
+          <div class="trends-chart-canvas" id="trends-chart-adr-rating"></div>
+        </div>
+
+        <div class="trends-chart-card">
+          <div class="trends-chart-header">
+            <span class="trends-chart-title">K/D RATIO &amp; HEADSHOT % TREND</span>
+            <span class="trends-chart-legend"><i class="dot-kd"></i> K/D &nbsp;&bull;&nbsp; <i class="dot-hs"></i> HS %</span>
+          </div>
+          <div class="trends-chart-canvas" id="trends-chart-kd-hs"></div>
+        </div>
+      </div>
+
+      <div class="trends-table-wrap">
+        <table class="trends-table">
+          <thead>
+            <tr>
+              <th>DATE / TIME</th>
+              <th>MAP</th>
+              <th>SCORE</th>
+              <th>RESULT</th>
+              <th>K / D / A</th>
+              <th>K/D</th>
+              <th>ADR</th>
+              <th>HS%</th>
+              <th>RATING</th>
+            </tr>
+          </thead>
+          <tbody id="trends-history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/weapon-skins-manifest.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

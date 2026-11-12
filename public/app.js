@@ -183,37 +183,78 @@ const UTILITY_SVGS = {
   </svg>`
 };
 
-function getWeaponKillfeedSvg(weaponNameOrId) {
+function resolveWeaponId(weaponNameOrId) {
   const raw = String(weaponNameOrId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!raw) return WEAPON_SVGS.ak47;
-  if (WEAPON_SVGS[raw]) return WEAPON_SVGS[raw];
-  if (raw.includes('m4a1s') || raw.includes('silencer')) return WEAPON_SVGS.m4a1s;
-  if (raw.includes('m4a4') || raw.includes('m4')) return WEAPON_SVGS.m4a4;
-  if (raw.includes('ssg') || raw.includes('scout')) return WEAPON_SVGS.ssg08;
-  if (raw.includes('awp') || raw.includes('sniper') || raw.includes('g3sg1') || raw.includes('scar')) return WEAPON_SVGS.awp;
-  if (raw.includes('aug')) return WEAPON_SVGS.aug;
-  if (raw.includes('sg55') || raw.includes('krieg')) return WEAPON_SVGS.sg553;
-  if (raw.includes('galil')) return WEAPON_SVGS.galil;
-  if (raw.includes('famas')) return WEAPON_SVGS.famas;
-  if (raw.includes('p90')) return WEAPON_SVGS.p90;
-  if (raw.includes('ump')) return WEAPON_SVGS.ump45;
-  if (raw.includes('mp7') || raw.includes('mp5')) return WEAPON_SVGS.mp7;
-  if (raw.includes('mp9')) return WEAPON_SVGS.mp9;
-  if (raw.includes('mac10') || raw.includes('bizon')) return WEAPON_SVGS.mac10;
-  if (raw.includes('xm1014') || raw.includes('mag7') || raw.includes('sawed')) return WEAPON_SVGS.xm1014;
-  if (raw.includes('nova')) return WEAPON_SVGS.nova;
-  if (raw.includes('revolver') || raw.includes('r8')) return WEAPON_SVGS.revolver;
-  if (raw.includes('deagle') || raw.includes('deserteagle')) return WEAPON_SVGS.deagle;
-  if (raw.includes('usp')) return WEAPON_SVGS.usps;
-  if (raw.includes('p2000')) return WEAPON_SVGS.p2000;
-  if (raw.includes('p250')) return WEAPON_SVGS.p250;
-  if (raw.includes('fiveseven')) return WEAPON_SVGS.fiveseven;
-  if (raw.includes('tec9')) return WEAPON_SVGS.tec9;
-  if (raw.includes('cz75') || raw.includes('cz')) return WEAPON_SVGS.cz75;
-  if (raw.includes('glock') || raw.includes('dual')) return WEAPON_SVGS.glock;
-  if (raw.includes('zeus') || raw.includes('taser')) return WEAPON_SVGS.zeus;
-  if (raw.includes('knife') || raw.includes('bayonet') || raw.includes('karambit')) return WEAPON_SVGS.knife;
-  return WEAPON_SVGS.ak47;
+  if (!raw) return 'ak47';
+  if (WEAPON_SVGS[raw]) return raw;
+  if (raw.includes('m4a1s') || raw.includes('silencer')) return 'm4a1s';
+  if (raw.includes('m4a4') || raw.includes('m4')) return 'm4a4';
+  if (raw.includes('ssg') || raw.includes('scout')) return 'ssg08';
+  if (raw.includes('awp') || raw.includes('sniper') || raw.includes('g3sg1') || raw.includes('scar')) return 'awp';
+  if (raw.includes('aug')) return 'aug';
+  if (raw.includes('sg55') || raw.includes('krieg')) return 'sg553';
+  if (raw.includes('galil')) return 'galil';
+  if (raw.includes('famas')) return 'famas';
+  if (raw.includes('p90')) return 'p90';
+  if (raw.includes('ump')) return 'ump45';
+  if (raw.includes('mp7') || raw.includes('mp5')) return 'mp7';
+  if (raw.includes('mp9')) return 'mp9';
+  if (raw.includes('mac10') || raw.includes('bizon')) return 'mac10';
+  if (raw.includes('xm1014') || raw.includes('mag7') || raw.includes('sawed')) return 'xm1014';
+  if (raw.includes('nova')) return 'nova';
+  if (raw.includes('revolver') || raw.includes('r8')) return 'revolver';
+  if (raw.includes('deagle') || raw.includes('deserteagle')) return 'deagle';
+  if (raw.includes('usp')) return 'usps';
+  if (raw.includes('p2000')) return 'p2000';
+  if (raw.includes('p250')) return 'p250';
+  if (raw.includes('fiveseven')) return 'fiveseven';
+  if (raw.includes('tec9')) return 'tec9';
+  if (raw.includes('cz75') || raw.includes('cz')) return 'cz75';
+  if (raw.includes('glock') || raw.includes('dual')) return 'glock';
+  if (raw.includes('zeus') || raw.includes('taser')) return 'zeus';
+  if (raw.includes('knife') || raw.includes('bayonet') || raw.includes('karambit')) return 'knife';
+  return 'ak47';
+}
+
+function getWeaponKillfeedSvg(weaponNameOrId) {
+  return WEAPON_SVGS[resolveWeaponId(weaponNameOrId)] || WEAPON_SVGS.ak47;
+}
+
+function normalizeSkinToken(str) {
+  return String(str || '')
+    .toUpperCase()
+    .replace(/^(CU|AQ|HY|AM|AA|GS|SO|SP|AN|SW|HQ)\s+/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+function findSkinnedSilhouette(weaponNameOrId, skinName) {
+  const manifest = window.WEAPON_SKIN_SILHOUETTES;
+  if (!manifest || !skinName) return null;
+  const rawSkin = normalizeSkinToken(skinName);
+  if (!rawSkin || rawSkin === 'STANDARDISSUE' || rawSkin === 'FACTORYISSUE' || rawSkin === 'DEFAULT' || rawSkin === 'STANDARD') {
+    return null;
+  }
+  const weaponId = resolveWeaponId(weaponNameOrId);
+  const weaponSkins = manifest[weaponId];
+  if (!weaponSkins) return null;
+
+  for (const [slug, entry] of Object.entries(weaponSkins)) {
+    const candidates = [slug, entry.label, ...(entry.aliases || [])].map(normalizeSkinToken);
+    for (const token of candidates) {
+      if (token && (rawSkin === token || rawSkin.includes(token) || token.includes(rawSkin))) {
+        return entry;
+      }
+    }
+  }
+  return null;
+}
+
+function getWeaponSilhouetteHtml(weaponNameOrId, skinName) {
+  const match = findSkinnedSilhouette(weaponNameOrId, skinName);
+  if (match) {
+    return `<img src="${match.path}" alt="${weaponNameOrId} ${match.label}" class="weapon-skinned-silhouette" loading="eager" decoding="async" />`;
+  }
+  return getWeaponKillfeedSvg(weaponNameOrId);
 }
 
 function isHostageRescueMap(mapName = appState ? appState.mapName : '') {
@@ -987,7 +1028,7 @@ function renderPlayersStage() {
       clipMax: 0,
       reserve: 0
     };
-    const weaponSvg = getWeaponKillfeedSvg(weapon.id || weapon.name);
+    const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin);
     const clipPct = weapon.clipMax > 0 ? Math.max(0, Math.min(100, (weapon.clip / weapon.clipMax) * 100)) : 100;
     const isLowAmmo = weapon.clipMax > 0 && weapon.clip <= Math.ceil(weapon.clipMax * 0.28);
 
@@ -1358,10 +1399,11 @@ function renderPlayerDetailView() {
     clipMax: 30,
     reserve: 90
   };
-  const weaponSvg = getWeaponKillfeedSvg(weapon.id || weapon.name);
+  const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin);
   const sidearm = p.secondaryWeapon || { id: 'deagle', name: 'Desert Eagle', skin: 'STANDARD', clip: 7, clipMax: 7, reserve: 35 };
-  const sidearmSvg = getWeaponKillfeedSvg(sidearm.id || sidearm.name);
+  const sidearmSvg = getWeaponSilhouetteHtml(sidearm.id || sidearm.name, sidearm.skin);
   const knife = p.knifeWeapon || { id: 'knife', name: currentSide === 'CT' ? 'CT Tactical Knife' : 'Tactical Knife', skin: 'STANDARD ISSUE', state: 'holstered' };
+  const knifeSvg = getWeaponSilhouetteHtml(knife.id || knife.name, knife.skin);
   const hasZeus = Boolean(p.hasZeus);
 
   const flashedPct = Math.min(100, Math.round(((Number(p.flashed) || 0) / 255) * 100));
@@ -1652,6 +1694,7 @@ function renderPlayerDetailView() {
               <span class="pd-module-sub">MELEE // KNIFE</span>
               <span class="pd-solo-melee-name">${knife.name}</span>
             </div>
+            <div class="pd-solo-melee-svg">${knifeSvg}</div>
             <span class="pd-solo-melee-skin">${knife.skin || 'STANDARD ISSUE'}</span>
           </div>` : ''}
 
@@ -3263,6 +3306,257 @@ function bindControls() {
     legacyFsBtn.addEventListener('click', () => {
       setDisplayResolution(appState.displayRes || '1080p', true);
     });
+  }
+
+  const btnOpenTrends = document.getElementById('btn-open-trends');
+  const btnCloseTrends = document.getElementById('btn-close-trends');
+  const trendsModal = document.getElementById('trends-modal');
+  const trendsPlayerSelect = document.getElementById('trends-player-select');
+  const btnSnapshotTrends = document.getElementById('btn-snapshot-trends');
+  const btnClearTrends = document.getElementById('btn-clear-trends');
+
+  if (btnOpenTrends && trendsModal) {
+    btnOpenTrends.addEventListener('click', () => {
+      trendsModal.hidden = false;
+      const defaultPlayer = (appState.players.length === 1 && appState.players[0])
+        ? (appState.players[0].id || appState.players[0].name || 'all')
+        : 'all';
+      fetchAndRenderTrends(trendsPlayerSelect && trendsPlayerSelect.value ? trendsPlayerSelect.value : defaultPlayer);
+    });
+  }
+
+  if (btnCloseTrends && trendsModal) {
+    btnCloseTrends.addEventListener('click', () => {
+      trendsModal.hidden = true;
+    });
+  }
+
+  if (trendsModal) {
+    trendsModal.addEventListener('click', (e) => {
+      if (e.target === trendsModal) {
+        trendsModal.hidden = true;
+      }
+    });
+  }
+
+  if (trendsPlayerSelect) {
+    trendsPlayerSelect.addEventListener('change', () => {
+      fetchAndRenderTrends(trendsPlayerSelect.value);
+    });
+  }
+
+  if (btnSnapshotTrends) {
+    btnSnapshotTrends.addEventListener('click', async () => {
+      try {
+        const payload = {
+          map: appState.mapName,
+          mode: appState.mode,
+          teamSide: appState.humanSide,
+          humanScore: appState.humanScore,
+          botScore: appState.botScore,
+          round: appState.roundNumber,
+          players: appState.players.map(p => ({
+            id: p.id || p.name,
+            name: p.name,
+            team: p.team || appState.humanSide,
+            kills: p.kills,
+            deaths: p.deaths,
+            assists: p.assists,
+            adr: p.adr,
+            hsPercent: p.hsPercent,
+            mvps: p.mvps || 0,
+            score: p.score,
+            totalDamage: p.totalDamage
+          }))
+        };
+        const resp = await fetch('/api/trends/snapshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          showToastNotification({
+            category: 'system',
+            title: 'SNAPSHOT RECORDED',
+            message: `Archived ${appState.mapName.toUpperCase()} (${appState.humanScore}-${appState.botScore}) to performance history`
+          });
+          fetchAndRenderTrends(trendsPlayerSelect ? trendsPlayerSelect.value : 'all');
+        }
+      } catch (_) {}
+    });
+  }
+
+  if (btnClearTrends) {
+    btnClearTrends.addEventListener('click', async () => {
+      try {
+        await fetch('/api/trends/clear', { method: 'POST' });
+        fetchAndRenderTrends('all');
+      } catch (_) {}
+    });
+  }
+}
+
+/* ==========================================================================
+   PERFORMANCE TRENDS OVER TIME (SVG CHARTS & HISTORY TABLE)
+   ========================================================================== */
+function buildDualTrendSvg(series, seriesA, seriesB) {
+  if (!series || series.length === 0) {
+    return `<div class="trends-empty">No recorded sessions yet. Complete a match or click <strong>RECORD SNAPSHOT</strong> to start tracking performance over time.</div>`;
+  }
+
+  const W = 540;
+  const H = 175;
+  const PAD_L = 36;
+  const PAD_R = 16;
+  const PAD_T = 16;
+  const PAD_B = 26;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  const valsA = series.map(s => Number(seriesA.getValue(s)) || 0);
+  const valsB = series.map(s => Number(seriesB.getValue(s)) || 0);
+  const maxVal = Math.max(10, ...valsA, ...valsB) * 1.15;
+
+  const toX = (idx) => series.length === 1 ? PAD_L + plotW / 2 : PAD_L + (idx / (series.length - 1)) * plotW;
+  const toY = (val) => PAD_T + plotH - Math.min(1, Math.max(0, val / maxVal)) * plotH;
+
+  const pointsA = valsA.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+  const pointsB = valsB.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+  const areaA = series.length > 1
+    ? `${PAD_L},${PAD_T + plotH} ${pointsA} ${toX(series.length - 1).toFixed(1)},${PAD_T + plotH}`
+    : '';
+
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(frac => {
+    const y = (PAD_T + plotH * (1 - frac)).toFixed(1);
+    const label = Math.round(maxVal * frac);
+    return `
+      <line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="rgba(255,255,255,0.08)" stroke-dasharray="3 3"/>
+      <text x="${PAD_L - 6}" y="${Number(y) + 3}" text-anchor="end" fill="#64748b" font-family="JetBrains Mono, monospace" font-size="9">${label}</text>
+    `;
+  }).join('');
+
+  const dotsA = valsA.map((v, i) => `
+    <circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="3.5" fill="${seriesA.color}" stroke="#070a10" stroke-width="1.5">
+      <title>${series[i].map} (${series[i].timeFormatted}): ${seriesA.label} ${seriesA.format ? seriesA.format(series[i]) : v}</title>
+    </circle>
+  `).join('');
+
+  const dotsB = valsB.map((v, i) => `
+    <circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="3" fill="${seriesB.color}" stroke="#070a10" stroke-width="1.2">
+      <title>${series[i].map} (${series[i].timeFormatted}): ${seriesB.label} ${seriesB.format ? seriesB.format(series[i]) : v}</title>
+    </circle>
+  `).join('');
+
+  const xLabels = series.map((s, i) => {
+    if (series.length > 8 && i % Math.ceil(series.length / 6) !== 0 && i !== series.length - 1) return '';
+    return `<text x="${toX(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono, monospace" font-size="9">M${i + 1}</text>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" class="trends-svg-chart" preserveAspectRatio="none">
+      ${gridLines}
+      ${areaA ? `<polygon points="${areaA}" fill="${seriesA.color}" fill-opacity="0.12"/>` : ''}
+      ${series.length > 1 ? `<polyline fill="none" stroke="${seriesA.color}" stroke-width="2.4" points="${pointsA}"/>` : ''}
+      ${series.length > 1 ? `<polyline fill="none" stroke="${seriesB.color}" stroke-width="2" stroke-dasharray="4 3" points="${pointsB}"/>` : ''}
+      ${dotsA}
+      ${dotsB}
+      ${xLabels}
+    </svg>
+  `;
+}
+
+async function fetchAndRenderTrends(selectedPlayer = 'all') {
+  const kpiEl = document.getElementById('trends-kpi-strip');
+  const chart1El = document.getElementById('trends-chart-adr-rating');
+  const chart2El = document.getElementById('trends-chart-kd-hs');
+  const tbodyEl = document.getElementById('trends-history-tbody');
+  const selectEl = document.getElementById('trends-player-select');
+  if (!kpiEl || !chart1El || !chart2El || !tbodyEl) return;
+
+  try {
+    const resp = await fetch(`/api/trends?player=${encodeURIComponent(selectedPlayer)}&limit=30`);
+    const data = await resp.json();
+
+    if (selectEl) {
+      const prevVal = selectedPlayer || selectEl.value || 'all';
+      const opts = [`<option value="all">ALL / SQUAD AVERAGE</option>`].concat(
+        (data.players || []).map(pl => `<option value="${pl.key}">${pl.name} (${pl.matches} matches)</option>`)
+      );
+      selectEl.innerHTML = opts.join('');
+      const hasMatch = Array.from(selectEl.options).some(o => o.value === prevVal);
+      selectEl.value = hasMatch ? prevVal : 'all';
+    }
+
+    const s = data.summary || {};
+    const fmtDelta = (val, suffix = '') => {
+      if (!val) return `<span class="trend-delta flat">--</span>`;
+      const up = val > 0;
+      return `<span class="trend-delta ${up ? 'up' : 'down'}">${up ? '+' : ''}${val}${suffix} ${up ? '&#9650;' : '&#9660;'}</span>`;
+    };
+
+    kpiEl.innerHTML = `
+      <div class="trend-kpi-card">
+        <span class="trend-kpi-label">MATCHES TRACKED</span>
+        <span class="trend-kpi-val">${s.matches || 0}</span>
+        <span class="trend-kpi-sub">${s.wins || 0} WINS (${s.winRate || 0}% WR)</span>
+      </div>
+      <div class="trend-kpi-card accent">
+        <span class="trend-kpi-label">AVG ADR</span>
+        <span class="trend-kpi-val">${s.avgAdr || 0}</span>
+        <span class="trend-kpi-sub">RECENT DELTA ${fmtDelta(s.adrDelta)}</span>
+      </div>
+      <div class="trend-kpi-card accent">
+        <span class="trend-kpi-label">AVG K/D RATIO</span>
+        <span class="trend-kpi-val">${(s.avgKd || 0).toFixed ? Number(s.avgKd || 0).toFixed(2) : s.avgKd || '0.00'}</span>
+        <span class="trend-kpi-sub">RECENT DELTA ${fmtDelta(s.kdDelta)}</span>
+      </div>
+      <div class="trend-kpi-card">
+        <span class="trend-kpi-label">AVG HEADSHOT %</span>
+        <span class="trend-kpi-val">${s.avgHs || 0}%</span>
+        <span class="trend-kpi-sub">PEAK ADR: ${s.bestAdr || 0}</span>
+      </div>
+      <div class="trend-kpi-card accent">
+        <span class="trend-kpi-label">AVG RATING</span>
+        <span class="trend-kpi-val">${Number(s.avgRating || 0).toFixed(2)}</span>
+        <span class="trend-kpi-sub">RECENT DELTA ${fmtDelta(s.ratingDelta)}</span>
+      </div>
+    `;
+
+    const series = data.series || [];
+    chart1El.innerHTML = buildDualTrendSvg(
+      series,
+      { label: 'ADR', color: '#38bdf8', getValue: (pt) => pt.metrics.adr, format: (pt) => pt.metrics.adr },
+      { label: 'Rating', color: '#facc15', getValue: (pt) => Math.round(pt.metrics.rating * 100), format: (pt) => pt.metrics.rating }
+    );
+    chart2El.innerHTML = buildDualTrendSvg(
+      series,
+      { label: 'K/D x50', color: '#22c55e', getValue: (pt) => Math.round(pt.metrics.kd * 50), format: (pt) => pt.metrics.kd },
+      { label: 'HS%', color: '#f472b6', getValue: (pt) => pt.metrics.hsPercent, format: (pt) => `${pt.metrics.hsPercent}%` }
+    );
+
+    if (series.length === 0) {
+      tbodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:18px;">No match sessions archived yet.</td></tr>`;
+    } else {
+      tbodyEl.innerHTML = [...series].reverse().map(pt => {
+        const m = pt.metrics;
+        const resClass = pt.result === 'WIN' ? 'win' : pt.result === 'LOSS' ? 'loss' : 'tie';
+        return `
+          <tr>
+            <td>${pt.timeFormatted}</td>
+            <td><strong>${String(pt.map || '').toUpperCase()}</strong></td>
+            <td>${pt.humanScore} - ${pt.botScore}</td>
+            <td><span class="trend-res-pill ${resClass}">${pt.result}</span></td>
+            <td>${m.kills} / ${m.deaths} / ${m.assists}</td>
+            <td>${Number(m.kd || 0).toFixed(2)}</td>
+            <td style="color:var(--squad-accent); font-weight:700;">${m.adr}</td>
+            <td>${m.hsPercent}%</td>
+            <td style="font-weight:700;">${Number(m.rating || 0).toFixed(2)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    kpiEl.innerHTML = `<div class="trends-empty">Failed to load trend history.</div>`;
   }
 }
 
