@@ -268,6 +268,10 @@ function getClientsSummary() {
     mode: c.mode,
     team: c.team,
     slot: c.slot || null,
+    mapName: c.mapName || null,
+    score: c.score || null,
+    round: c.round || null,
+    inMatch: c.mode !== 'menu_standby',
     connectedAt: c.connectedAt,
     lastSeenAt: c.lastSeenAt,
     ageMs: Math.max(0, now - c.lastSeenAt),
@@ -337,11 +341,48 @@ function recordServerLog({ level = 'INFO', category = 'system', title, message, 
   return entry;
 }
 
-// Aggregated Multi-Client & Spectator GSI State
+// Per-client isolated GSI sessions (keyed by clientKey = steamId or ip fallback)
+const clientSessions = new Map();
+
+function getOrCreateClientSession(clientKey, clientIp = '127.0.0.1') {
+  if (!clientSessions.has(clientKey)) {
+    clientSessions.set(clientKey, {
+      id: clientKey,
+      steamId: clientKey,
+      ip: clientIp,
+      mode: 'menu_standby', // 'spectator_allplayers' | 'multi_client' | 'menu_standby'
+      humanTeamSide: 'CT',
+      botTeamSide: 'T',
+      map: {
+        name: 'de_mirage',
+        phase: 'live',
+        round: 1,
+        ctScore: 0,
+        tScore: 0
+      },
+      round: {
+        phase: 'live',
+        winTeam: null,
+        bomb: null,
+        bombPlantedAt: null,
+        phaseTimeLeft: 115
+      },
+      humanPlayersMap: new Map(),
+      bots: [],
+      bannerAlert: null,
+      lastPacketAt: Date.now(),
+      packetsReceived: 0
+    });
+  }
+  return clientSessions.get(clientKey);
+}
+
+// Aggregated Multi-Client & Spectator GSI State (derived via syncGlobalGsiStore)
 const gsiStore = {
   lastPacketAt: null,
   packetsReceived: 0,
   ingestionMode: 'waiting', // 'spectator_allplayers' | 'multi_client' | 'waiting'
+  multiMatchConflict: false,
   humanTeamSide: 'CT',
   botTeamSide: 'T',
   map: {
@@ -838,70 +879,191 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
   };
 }
 
+function syncGlobalGsiStore() {
+  const sessions = Array.from(clientSessions.values());
+  const specSessions = sessions.filter(s => s.mode === 'spectator_allplayers' && s.humanPlayersMap.size > 0);
+  const multiSessions = sessions.filter(s => s.mode === 'multi_client' && s.humanPlayersMap.size > 0);
+
+  if (specSessions.length > 0) {
+    // Use most recently active spectator session for the global aggregated view
+    specSessions.sort((a, b) => b.lastPacketAt - a.lastPacketAt);
+    const primary = specSessions[0];
+    gsiStore.ingestionMode = 'spectator_allplayers';
+    gsiStore.multiMatchConflict = specSessions.length > 1 || multiSessions.length > 0;
+    gsiStore.humanTeamSide = primary.humanTeamSide;
+    gsiStore.botTeamSide = primary.botTeamSide;
+    gsiStore.map = { ...primary.map };
+    gsiStore.round = { ...primary.round };
+    gsiStore.bots = primary.bots;
+    gsiStore.bannerAlert = primary.bannerAlert;
+    gsiStore.humanPlayersMap = new Map(primary.humanPlayersMap);
+    return;
+  }
+
+  if (multiSessions.length > 0) {
+    // Group active multi-client sessions by match context (map + team side) so teammates merge cleanly
+    // while players in different matches or opposing teams never overwrite each other.
+    const groups = new Map();
+    for (const s of multiSessions) {
+      const groupKey = `${(s.map.name || 'de_mirage').toLowerCase()}|${s.humanTeamSide || 'CT'}`;
+      if (!groups.has(groupKey)) groups.set(groupKey, []);
+      groups.get(groupKey).push(s);
+    }
+
+    const groupList = Array.from(groups.values());
+    groupList.sort((a, b) => {
+      if (b.length !== a.length) return b.length - a.length;
+      const maxA = Math.max(...a.map(s => s.lastPacketAt));
+      const maxB = Math.max(...b.map(s => s.lastPacketAt));
+      return maxB - maxA;
+    });
+
+    const primaryGroup = groupList[0];
+    const newestSession = [...primaryGroup].sort((a, b) => b.lastPacketAt - a.lastPacketAt)[0];
+
+    gsiStore.ingestionMode = 'multi_client';
+    gsiStore.multiMatchConflict = groupList.length > 1;
+    gsiStore.humanTeamSide = newestSession.humanTeamSide;
+    gsiStore.botTeamSide = newestSession.botTeamSide;
+    gsiStore.map = { ...newestSession.map };
+    gsiStore.round = { ...newestSession.round };
+    gsiStore.bannerAlert = newestSession.bannerAlert;
+
+    const mergedPlayers = new Map();
+    let slotCounter = 1;
+    // Sort deterministically by client connection order (connectedAt) so cards don't jump around
+    const orderedGroup = [...primaryGroup].sort((a, b) => {
+      const ca = gsiClientsMap.get(a.id);
+      const cb = gsiClientsMap.get(b.id);
+      return ((ca && ca.connectedAt) || 0) - ((cb && cb.connectedAt) || 0);
+    });
+
+    for (const s of orderedGroup) {
+      for (const [sid, playerObj] of s.humanPlayersMap.entries()) {
+        if (mergedPlayers.size >= 10) break;
+        const cloned = { ...playerObj, slot: slotCounter++ };
+        mergedPlayers.set(sid, cloned);
+        if (gsiClientsMap.has(s.id) && s.id === sid) {
+          gsiClientsMap.get(s.id).slot = cloned.slot;
+        }
+      }
+    }
+    gsiStore.humanPlayersMap = mergedPlayers;
+
+    const totalRoundBotKills = Array.from(mergedPlayers.values())
+      .reduce((sum, p) => sum + (p.roundKills || 0), 0);
+    const deadBotsCount = Math.min(10, totalRoundBotKills);
+    gsiStore.bots = Array.from({ length: 10 }, (_, idx) => ({
+      id: `bot-${idx + 1}`,
+      name: `BOT ${idx + 1}`,
+      health: idx < deadBotsCount ? 0 : 100,
+      armor: idx < deadBotsCount ? 0 : 100
+    }));
+    return;
+  }
+
+  gsiStore.ingestionMode = 'waiting';
+  gsiStore.multiMatchConflict = false;
+  gsiStore.humanPlayersMap.clear();
+  gsiStore.bots = [];
+}
+
 function handleGsiPayload(payload, clientIp = '127.0.0.1') {
   const now = Date.now();
   gsiStore.lastPacketAt = now;
   gsiStore.packetsReceived += 1;
 
-  // 1. Map & Scores
+  const hasAllPlayers = Boolean(payload.allplayers && Object.keys(payload.allplayers).length > 0);
+  const providerSid = (payload.provider && payload.provider.steamid) ? String(payload.provider.steamid) : null;
+  const playerSid = (payload.player && payload.player.steamid) ? String(payload.player.steamid) : null;
+  const clientKey = hasAllPlayers
+    ? (providerSid || `spectator-${clientIp}`)
+    : (providerSid || playerSid || `menu-${clientIp}`);
+
+  const session = getOrCreateClientSession(clientKey, clientIp);
+  session.lastPacketAt = now;
+  session.packetsReceived += 1;
+  session.ip = clientIp;
+  if (providerSid) session.steamId = providerSid;
+
+  // 1. Per-Session Map & Scores
   if (payload.map) {
-    const prevPhase = gsiStore.map.phase;
-    gsiStore.map.name = payload.map.name || gsiStore.map.name;
-    gsiStore.map.phase = payload.map.phase || gsiStore.map.phase;
-    gsiStore.map.round = typeof payload.map.round === 'number' ? payload.map.round + 1 : gsiStore.map.round;
+    const prevPhase = session.map.phase;
+    session.map.name = payload.map.name || session.map.name;
+    session.map.phase = payload.map.phase || session.map.phase;
+    session.map.round = typeof payload.map.round === 'number' ? payload.map.round + 1 : session.map.round;
     if (payload.map.team_ct && typeof payload.map.team_ct.score === 'number') {
-      gsiStore.map.ctScore = payload.map.team_ct.score;
+      session.map.ctScore = payload.map.team_ct.score;
     }
     if (payload.map.team_t && typeof payload.map.team_t.score === 'number') {
-      gsiStore.map.tScore = payload.map.team_t.score;
+      session.map.tScore = payload.map.team_t.score;
     }
-    if (gsiStore.map.phase === 'gameover' && prevPhase !== 'gameover') {
-      const matchSig = `${gsiStore.map.name}|${gsiStore.map.ctScore}-${gsiStore.map.tScore}|${gsiStore.map.round}`;
+    if (session.map.phase === 'gameover' && prevPhase !== 'gameover') {
+      const matchSig = `${clientKey}|${session.map.name}|${session.map.ctScore}-${session.map.tScore}|${session.map.round}`;
       if (matchSig !== lastAutoRecordedMatchSig) {
         lastAutoRecordedMatchSig = matchSig;
-        const saved = recordPerformanceSession({ mode: 'gsi' });
-        if (saved) {
-          recordServerLog({
-            level: 'INFO',
-            category: 'system',
-            title: `MATCH TELEMETRY ARCHIVED // ${saved.map.toUpperCase()}`,
-            message: `Saved ${saved.result} (${saved.humanScore}-${saved.botScore}) for ${saved.players.length} operator(s) to performance trends`
+        const sessionPlayers = Array.from(session.humanPlayersMap.values());
+        if (sessionPlayers.length > 0) {
+          const saved = recordPerformanceSession({
+            mode: 'gsi',
+            map: session.map.name,
+            round: session.map.round,
+            teamSide: session.humanTeamSide,
+            ctScore: session.map.ctScore,
+            tScore: session.map.tScore,
+            players: sessionPlayers
           });
+          if (saved) {
+            recordServerLog({
+              level: 'INFO',
+              category: 'system',
+              title: `MATCH TELEMETRY ARCHIVED // ${saved.map.toUpperCase()}`,
+              message: `Saved ${saved.result} (${saved.humanScore}-${saved.botScore}) for ${saved.players.length} operator(s) to performance trends`
+            });
+          }
         }
       }
     }
   }
 
-  // 2. Round & Bomb State
+  // 2. Per-Session Round & Bomb State
   if (payload.round) {
-    const prevBomb = gsiStore.round.bomb;
-    gsiStore.round.phase = payload.round.phase || gsiStore.round.phase;
-    gsiStore.round.winTeam = payload.round.win_team || null;
-    gsiStore.round.bomb = payload.round.bomb || null;
+    const prevBomb = session.round.bomb;
+    session.round.phase = payload.round.phase || session.round.phase;
+    session.round.winTeam = payload.round.win_team || null;
+    session.round.bomb = payload.round.bomb || null;
 
-    if (gsiStore.round.bomb === 'planted' && prevBomb !== 'planted') {
-      gsiStore.round.bombPlantedAt = now;
-      gsiStore.bannerAlert = {
+    if (session.round.bomb === 'planted' && prevBomb !== 'planted') {
+      session.round.bombPlantedAt = now;
+      session.bannerAlert = {
         type: 'bomb',
         title: 'BOMB PLANTED // 40s COUNTDOWN ACTIVE',
         subtitle: 'C4 ARMED — DEFUSE THRESHOLD 10s (5s WITH KIT)',
         timestamp: now
       };
-    } else if (!gsiStore.round.bomb) {
-      gsiStore.round.bombPlantedAt = null;
+    } else if (!session.round.bomb) {
+      session.round.bombPlantedAt = null;
     }
   }
 
   if (payload.phase_countdowns && payload.phase_countdowns.phase_ends_in) {
     const sec = parseFloat(payload.phase_countdowns.phase_ends_in);
     if (!Number.isNaN(sec)) {
-      gsiStore.round.phaseTimeLeft = Math.max(0, sec);
+      session.round.phaseTimeLeft = Math.max(0, sec);
     }
   }
 
-  // 3. Spectator `allplayers` mode vs Individual `player` multi-client mode
-  if (payload.allplayers && Object.keys(payload.allplayers).length > 0) {
-    gsiStore.ingestionMode = 'spectator_allplayers';
+  // Keep gsiStore.map.round & gsiStore.round.phase aligned with this session while normalizing its players
+  gsiStore.map.round = session.map.round;
+  gsiStore.round.phase = session.round.phase;
+  gsiStore.humanTeamSide = session.humanTeamSide;
+  gsiStore.botTeamSide = session.botTeamSide;
+
+  // 3. Spectator `allplayers` mode vs Individual `player` multi-client mode vs Menu standby
+  const isInMatchPlayer = Boolean(payload.player && (payload.player.steamid || payload.player.name) && payload.map && payload.player.activity !== 'menu');
+
+  if (hasAllPlayers) {
+    session.mode = 'spectator_allplayers';
     const entries = Object.entries(payload.allplayers);
 
     const teamCounts = { CT: [], T: [] };
@@ -910,8 +1072,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       teamCounts[team].push([sid, p]);
     }
 
-    // Determine human side (side with real SteamID64 players or <= 10 non-bot players vs bot swarm)
-    let humanSide = gsiStore.humanTeamSide;
+    let humanSide = session.humanTeamSide;
     const ctHumans = teamCounts.CT.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !isBotSteamIdOrName(sid, p.name));
     const tHumans = teamCounts.T.filter(([sid, p]) => /^7656119\d{10}$/.test(sid) && !isBotSteamIdOrName(sid, p.name));
 
@@ -932,17 +1093,18 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
         humanSide = 'T';
       }
     }
-    gsiStore.humanTeamSide = humanSide;
-    gsiStore.botTeamSide = humanSide === 'CT' ? 'T' : 'CT';
+    session.humanTeamSide = humanSide;
+    session.botTeamSide = humanSide === 'CT' ? 'T' : 'CT';
+    gsiStore.humanTeamSide = session.humanTeamSide;
+    gsiStore.botTeamSide = session.botTeamSide;
 
     const rawHumanTeam = teamCounts[humanSide];
     const filteredHumans = rawHumanTeam.filter(([sid, p]) => !isBotSteamIdOrName(sid, p.name));
     const humanEntries = (filteredHumans.length > 0 ? filteredHumans : rawHumanTeam).slice(0, 10);
-    const botEntries = teamCounts[gsiStore.botTeamSide].slice(0, 10);
+    const botEntries = teamCounts[session.botTeamSide].slice(0, 10);
 
-    // Detect any bots whose health just dropped to 0 on this packet
     const newlyDeadBotNames = [];
-    gsiStore.bots = botEntries.map(([sid, p], idx) => {
+    session.bots = botEntries.map(([sid, p], idx) => {
       const botName = p.name || DEFAULT_BOT_NAMES[idx] || `BOT ${idx + 1}`;
       const currHp = p.state && typeof p.state.health === 'number' ? p.state.health : 0;
       const prevHp = botHealthTracker.get(sid);
@@ -958,16 +1120,15 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       };
     });
 
-    gsiStore.humanPlayersMap.clear();
+    session.humanPlayersMap.clear();
     humanEntries.forEach(([sid, p], idx) => {
       const normalized = normalizeGsiPlayer(sid, p, idx, newlyDeadBotNames);
-      gsiStore.humanPlayersMap.set(sid, normalized);
+      session.humanPlayersMap.set(sid, normalized);
     });
 
-    // If any bot died this tick and no player's round_kills delta consumed it yet (e.g. spectated player or delayed stat)
     if (newlyDeadBotNames.length > 0 && humanEntries.length > 0) {
-      const activeHuman = Array.from(gsiStore.humanPlayersMap.values()).find(h => h.health > 0) ||
-        Array.from(gsiStore.humanPlayersMap.values())[0];
+      const activeHuman = Array.from(session.humanPlayersMap.values()).find(h => h.health > 0) ||
+        Array.from(session.humanPlayersMap.values())[0];
       if (activeHuman) {
         const weaponName = (activeHuman.activeWeapon && activeHuman.activeWeapon.name) || 'AK-47';
         while (newlyDeadBotNames.length > 0) {
@@ -987,54 +1148,58 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       }
     }
 
-    // Track Spectator GSI Client connection
-    const specKey = `spectator-${clientIp}`;
-    const existingSpec = gsiClientsMap.get(specKey);
+    const existingSpec = gsiClientsMap.get(clientKey);
+    const scoreStr = `${session.map.ctScore}-${session.map.tScore}`;
     if (!existingSpec) {
       const specClient = {
-        id: specKey,
+        id: clientKey,
         name: 'SPECTATOR OBSERVER PC',
-        steamId: (payload.provider && payload.provider.steamid) || 'OBSERVER',
+        steamId: providerSid || 'OBSERVER',
         ip: clientIp,
         mode: 'spectator_allplayers',
         team: humanSide,
         slot: null,
+        mapName: session.map.name,
+        score: scoreStr,
+        round: session.map.round,
         connectedAt: now,
         lastSeenAt: now,
         packetsReceived: 1
       };
-      gsiClientsMap.set(specKey, specClient);
+      gsiClientsMap.set(clientKey, specClient);
       recordServerLog({
         level: 'INFO',
         category: 'gsi_connect',
         title: 'CS2 SPECTATOR CLIENT CONNECTED',
-        message: `Observer PC (${clientIp}) streaming ${humanEntries.length}v${botEntries.length} telemetry on ${gsiStore.map.name.toUpperCase()}`,
+        message: `Observer PC (${clientIp}) streaming ${humanEntries.length}v${botEntries.length} telemetry on ${session.map.name.toUpperCase()}`,
         meta: { client: specClient }
       });
     } else {
+      existingSpec.mode = 'spectator_allplayers';
       existingSpec.lastSeenAt = now;
       existingSpec.packetsReceived += 1;
       existingSpec.team = humanSide;
+      existingSpec.mapName = session.map.name;
+      existingSpec.score = scoreStr;
+      existingSpec.round = session.map.round;
     }
-  } else if (payload.player && (payload.player.steamid || payload.player.name)) {
-    // Individual player client mode (aggregates 1 to 5 human PCs dynamically)
-    if (gsiStore.ingestionMode === 'waiting') {
-      gsiStore.ingestionMode = 'multi_client';
-    }
+  } else if (isInMatchPlayer) {
+    session.mode = 'multi_client';
 
     const sid = String(payload.player.steamid || payload.player.name);
-    const providerSid = payload.provider && payload.provider.steamid ? String(payload.provider.steamid) : null;
     const isOwnPlayer = !providerSid || providerSid === sid;
     const isBotPlayer = isBotSteamIdOrName(sid, payload.player.name);
 
     if (isOwnPlayer && payload.player.team && !isBotPlayer) {
-      gsiStore.humanTeamSide = payload.player.team;
-      gsiStore.botTeamSide = payload.player.team === 'CT' ? 'T' : 'CT';
+      session.humanTeamSide = payload.player.team;
+      session.botTeamSide = payload.player.team === 'CT' ? 'T' : 'CT';
+      gsiStore.humanTeamSide = session.humanTeamSide;
+      gsiStore.botTeamSide = session.botTeamSide;
     }
 
     // If the local player (`providerSid`) is spectating someone else (`!isOwnPlayer`), it means the local player is dead this round!
-    if (!isOwnPlayer && providerSid && gsiStore.humanPlayersMap.has(providerSid)) {
-      const ownEntry = gsiStore.humanPlayersMap.get(providerSid);
+    if (!isOwnPlayer && providerSid && session.humanPlayersMap.has(providerSid)) {
+      const ownEntry = session.humanPlayersMap.get(providerSid);
       const ownTracker = playerCombatTracker.get(providerSid);
       if (ownEntry && ownEntry.health > 0) {
         ownEntry.health = 0;
@@ -1046,11 +1211,11 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
           ownTracker.prevHealth = 0;
           ownTracker.deaths = Math.max(ownTracker.deaths || 0, ownEntry.deaths);
         }
-        const botIdx = ((ownEntry.slot || 1) + (gsiStore.map.round || 1)) % DEFAULT_BOT_NAMES.length;
+        const botIdx = ((ownEntry.slot || 1) + (session.map.round || 1)) % DEFAULT_BOT_NAMES.length;
         const killerBot = isBotPlayer && payload.player.name
           ? (payload.player.name.toUpperCase().startsWith('BOT ') ? payload.player.name : `BOT ${payload.player.name.toUpperCase()}`)
           : DEFAULT_BOT_NAMES[botIdx];
-        const botWeapon = gsiStore.botTeamSide === 'T' ? 'AK-47' : 'M4A1-S';
+        const botWeapon = session.botTeamSide === 'T' ? 'AK-47' : 'M4A1-S';
         pushServerKillfeedEvent({
           attacker: killerBot,
           attackerType: 'bot',
@@ -1064,111 +1229,101 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       }
     }
 
-    // Only track human squad members (update own player or an already-registered human teammate being spectated)
-    if (!isBotPlayer && (isOwnPlayer || gsiStore.humanPlayersMap.has(sid))) {
-      const keys = Array.from(gsiStore.humanPlayersMap.keys());
-      const existingIdx = keys.indexOf(sid);
-      const slotIdx = existingIdx >= 0 ? existingIdx : gsiStore.humanPlayersMap.size;
-      if (slotIdx < 10) {
-        const normalized = normalizeGsiPlayer(sid, payload.player, slotIdx);
-        gsiStore.humanPlayersMap.set(sid, normalized);
-      }
-
-      // Re-index slots 1..N cleanly
-      Array.from(gsiStore.humanPlayersMap.values()).forEach((p, idx) => {
-        p.slot = idx + 1;
-      });
-
-      const assignedPlayer = gsiStore.humanPlayersMap.get(sid);
-      const assignedSlot = assignedPlayer ? assignedPlayer.slot : slotIdx + 1;
-      const playerName = payload.player.name || `OPERATOR ${assignedSlot}`;
-
-      // Track Individual CS2 Player GSI Client connection (only for the actual client PC `isOwnPlayer`)
-      if (isOwnPlayer) {
-        const existingClient = gsiClientsMap.get(sid);
-        if (!existingClient) {
-          const clientEntry = {
-            id: sid,
-            name: playerName,
-            steamId: sid,
-            ip: clientIp,
-            mode: 'multi_client',
-            team: payload.player.team || gsiStore.humanTeamSide,
-            slot: assignedSlot,
-            connectedAt: now,
-            lastSeenAt: now,
-            packetsReceived: 1
-          };
-          gsiClientsMap.set(sid, clientEntry);
-          recordServerLog({
-            level: 'INFO',
-            category: 'gsi_connect',
-            title: `CS2 CLIENT CONNECTED // ${playerName}`,
-            message: `Slot ${String(assignedSlot).padStart(2, '0')} (${clientIp}) joined squad telemetry [${gsiClientsMap.size} PC(s) active]`,
-            meta: { client: clientEntry }
-          });
-        } else {
-          existingClient.name = playerName;
-          existingClient.ip = clientIp;
-          existingClient.team = payload.player.team || existingClient.team;
-          existingClient.slot = assignedSlot;
-          existingClient.lastSeenAt = now;
-          existingClient.packetsReceived += 1;
-        }
-      } else if (providerSid && gsiClientsMap.has(providerSid)) {
-        const existingClient = gsiClientsMap.get(providerSid);
-        existingClient.lastSeenAt = now;
-        existingClient.packetsReceived += 1;
-      }
-    } else if (providerSid && gsiClientsMap.has(providerSid)) {
-      // Update heartbeat even while dead player is spectating a teammate/bot
-      const existingClient = gsiClientsMap.get(providerSid);
-      existingClient.lastSeenAt = now;
-      existingClient.packetsReceived += 1;
+    // Only track this client's own human player in their isolated session
+    if (!isBotPlayer && isOwnPlayer) {
+      const normalized = normalizeGsiPlayer(sid, payload.player, 0);
+      session.humanPlayersMap.set(sid, normalized);
     }
 
-    // In multi-client mode (no spectator allplayers), infer remaining bots out of 10 from squad roundKills
-    const totalRoundBotKills = Array.from(gsiStore.humanPlayersMap.values())
-      .slice(0, 10)
-      .reduce((sum, p) => sum + (p.roundKills || 0), 0);
-    const deadBotsCount = Math.min(10, totalRoundBotKills);
-    gsiStore.bots = Array.from({ length: 10 }, (_, idx) => ({
+    const ownPlayer = session.humanPlayersMap.get(clientKey) || Array.from(session.humanPlayersMap.values())[0];
+    const roundKills = ownPlayer ? (ownPlayer.roundKills || 0) : 0;
+    const deadBotsCount = Math.min(10, roundKills);
+    session.bots = Array.from({ length: 10 }, (_, idx) => ({
       id: `bot-${idx + 1}`,
       name: `BOT ${idx + 1}`,
       health: idx < deadBotsCount ? 0 : 100,
       armor: idx < deadBotsCount ? 0 : 100
     }));
-  } else {
-    // Heartbeat / menu payload from a CS2 client not yet in a match
-    const providerSid = (payload.provider && payload.provider.steamid) ? String(payload.provider.steamid) : `menu-${clientIp}`;
-    const existingClient = gsiClientsMap.get(providerSid);
+
+    const playerName = (isOwnPlayer && payload.player.name) ? payload.player.name : (ownPlayer ? ownPlayer.name : `OPERATOR (${clientIp})`);
+    const scoreStr = `${session.map.ctScore}-${session.map.tScore}`;
+    const existingClient = gsiClientsMap.get(clientKey);
     if (!existingClient) {
       const clientEntry = {
-        id: providerSid,
-        name: `CS2 CLIENT (${clientIp})`,
-        steamId: providerSid,
+        id: clientKey,
+        name: playerName,
+        steamId: clientKey,
         ip: clientIp,
-        mode: 'menu_standby',
-        team: gsiStore.humanTeamSide,
-        slot: null,
+        mode: 'multi_client',
+        team: session.humanTeamSide,
+        slot: 1,
+        mapName: session.map.name,
+        score: scoreStr,
+        round: session.map.round,
         connectedAt: now,
         lastSeenAt: now,
         packetsReceived: 1
       };
-      gsiClientsMap.set(providerSid, clientEntry);
+      gsiClientsMap.set(clientKey, clientEntry);
       recordServerLog({
         level: 'INFO',
         category: 'gsi_connect',
-        title: 'CS2 CLIENT CONNECTED (LOBBY/MENU)',
-        message: `CS2 instance at ${clientIp} (SteamID: ${providerSid}) connected and waiting for match`,
+        title: `CS2 CLIENT CONNECTED // ${playerName}`,
+        message: `${playerName} (${clientIp}) joined on ${session.map.name.toUpperCase()} [${gsiClientsMap.size} PC(s) active]`,
         meta: { client: clientEntry }
       });
     } else {
+      existingClient.mode = 'multi_client';
+      existingClient.name = playerName;
+      existingClient.ip = clientIp;
+      existingClient.team = session.humanTeamSide;
+      existingClient.mapName = session.map.name;
+      existingClient.score = scoreStr;
+      existingClient.round = session.map.round;
+      existingClient.lastSeenAt = now;
+      existingClient.packetsReceived += 1;
+    }
+  } else {
+    // Heartbeat / menu payload from a CS2 client not yet in a match
+    session.mode = 'menu_standby';
+    session.humanPlayersMap.clear();
+    const menuName = (payload.player && payload.player.name) ? payload.player.name : `CS2 CLIENT (${clientIp})`;
+    const existingClient = gsiClientsMap.get(clientKey);
+    if (!existingClient) {
+      const clientEntry = {
+        id: clientKey,
+        name: menuName,
+        steamId: clientKey,
+        ip: clientIp,
+        mode: 'menu_standby',
+        team: session.humanTeamSide,
+        slot: null,
+        mapName: null,
+        score: null,
+        round: null,
+        connectedAt: now,
+        lastSeenAt: now,
+        packetsReceived: 1
+      };
+      gsiClientsMap.set(clientKey, clientEntry);
+      recordServerLog({
+        level: 'INFO',
+        category: 'gsi_connect',
+        title: `CS2 CLIENT CONNECTED (LOBBY/MENU) // ${menuName}`,
+        message: `CS2 instance at ${clientIp} (SteamID: ${clientKey}) connected and waiting for match`,
+        meta: { client: clientEntry }
+      });
+    } else {
+      existingClient.mode = 'menu_standby';
+      existingClient.name = menuName;
+      existingClient.slot = null;
+      existingClient.mapName = null;
       existingClient.lastSeenAt = now;
       existingClient.packetsReceived += 1;
     }
   }
 
+  syncGlobalGsiStore();
   broadcastGsiUpdate();
 }
 
@@ -1180,6 +1335,7 @@ setInterval(() => {
   for (const [key, client] of gsiClientsMap.entries()) {
     if (now - client.lastSeenAt > GSI_CLIENT_TIMEOUT_MS) {
       gsiClientsMap.delete(key);
+      clientSessions.delete(key);
       if (gsiStore.humanPlayersMap.has(key)) {
         gsiStore.humanPlayersMap.delete(key);
       }
@@ -1196,26 +1352,44 @@ setInterval(() => {
   }
 
   if (changed) {
-    // Re-index remaining players
-    Array.from(gsiStore.humanPlayersMap.values()).forEach((p, idx) => {
-      p.slot = idx + 1;
-      if (gsiClientsMap.has(p.id)) {
-        gsiClientsMap.get(p.id).slot = idx + 1;
-      }
-    });
-    if (gsiClientsMap.size === 0) {
-      gsiStore.ingestionMode = 'waiting';
-    }
+    syncGlobalGsiStore();
     broadcastGsiUpdate();
   }
 }, 4000);
 
-function getSerializedGsiState() {
+function getSerializedGsiState(targetClientId = '') {
+  const clientsSummary = getClientsSummary();
+  if (targetClientId && clientSessions.has(targetClientId)) {
+    const sess = clientSessions.get(targetClientId);
+    const players = Array.from(sess.humanPlayersMap.values()).slice(0, 10).map((p, idx) => ({
+      ...p,
+      slot: idx + 1
+    }));
+    return {
+      lastPacketAt: sess.lastPacketAt,
+      packetsReceived: sess.packetsReceived,
+      ingestionMode: sess.mode === 'menu_standby' ? 'waiting' : sess.mode,
+      activeClientId: targetClientId,
+      multiMatchConflict: gsiStore.multiMatchConflict,
+      humanTeamSide: sess.humanTeamSide,
+      botTeamSide: sess.botTeamSide,
+      map: sess.map,
+      round: sess.round,
+      humanPlayers: players,
+      bots: sess.bots,
+      killfeed: gsiStore.killfeed,
+      bannerAlert: sess.bannerAlert,
+      clients: clientsSummary
+    };
+  }
+
   const humanPlayers = Array.from(gsiStore.humanPlayersMap.values()).slice(0, 10);
   return {
     lastPacketAt: gsiStore.lastPacketAt,
     packetsReceived: gsiStore.packetsReceived,
     ingestionMode: gsiStore.ingestionMode,
+    activeClientId: '',
+    multiMatchConflict: gsiStore.multiMatchConflict,
     humanTeamSide: gsiStore.humanTeamSide,
     botTeamSide: gsiStore.botTeamSide,
     map: gsiStore.map,
@@ -1224,16 +1398,27 @@ function getSerializedGsiState() {
     bots: gsiStore.bots,
     killfeed: gsiStore.killfeed,
     bannerAlert: gsiStore.bannerAlert,
-    clients: getClientsSummary()
+    clients: clientsSummary
   };
 }
 
 function broadcastGsiUpdate() {
-  broadcastSseEvent({
-    type: 'gsi_update',
-    state: getSerializedGsiState(),
-    clients: getClientsSummary()
-  });
+  const clientsSummary = getClientsSummary();
+  const payloadCache = new Map();
+  for (const res of sseClients) {
+    try {
+      const meta = sseClientMeta.get(res);
+      const targetClientId = (meta && meta.targetClient) || '';
+      if (!payloadCache.has(targetClientId)) {
+        payloadCache.set(targetClientId, JSON.stringify({
+          type: 'gsi_update',
+          state: getSerializedGsiState(targetClientId),
+          clients: clientsSummary
+        }));
+      }
+      res.write(`data: ${payloadCache.get(targetClientId)}\n\n`);
+    } catch (_) {}
+  }
 }
 
 function getLocalIpAddress() {
@@ -1341,6 +1526,7 @@ const server = http.createServer((req, res) => {
     const clientIp = formatClientIp(req);
     const viewParam = url.searchParams.get('view') || 'squad';
     const slotParam = url.searchParams.get('slot');
+    const targetClient = url.searchParams.get('client') || '';
     const viewLabel = viewParam === 'player'
       ? `PLAYER VIEW${slotParam ? ` (SLOT ${String(slotParam).padStart(2, '0')})` : ''}`
       : 'SQUAD BROADCAST HUD';
@@ -1349,6 +1535,7 @@ const server = http.createServer((req, res) => {
       id: displayId,
       ip: clientIp,
       view: viewLabel,
+      targetClient,
       userAgent: String(req.headers['user-agent'] || 'Browser Display').slice(0, 80),
       connectedAt: Date.now()
     };
@@ -1373,7 +1560,7 @@ const server = http.createServer((req, res) => {
     res.write(`data: ${JSON.stringify({
       type: 'connected',
       clientId: displayId,
-      state: getSerializedGsiState(),
+      state: getSerializedGsiState(targetClient),
       clients: getClientsSummary(),
       logs: serverLogs.slice(0, 40),
       lanIp: getLocalIpAddress(),
@@ -1465,11 +1652,12 @@ const server = http.createServer((req, res) => {
 
   // API State Snapshot
   if (req.method === 'GET' && url.pathname === '/api/state') {
+    const clientParam = url.searchParams.get('client') || '';
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       lanIp: getLocalIpAddress(),
       port: PORT,
-      state: getSerializedGsiState(),
+      state: getSerializedGsiState(clientParam),
       clients: getClientsSummary(),
       logs: serverLogs.slice(0, 40)
     }));
@@ -1509,11 +1697,13 @@ const server = http.createServer((req, res) => {
     const clientIp = formatClientIp(req);
     gsiStore.humanPlayersMap.clear();
     gsiClientsMap.clear();
+    clientSessions.clear();
     playerCombatTracker.clear();
     botHealthTracker.clear();
     gsiStore.bots = [];
     gsiStore.killfeed = [];
     gsiStore.ingestionMode = 'waiting';
+    gsiStore.multiMatchConflict = false;
     recordServerLog({
       level: 'INFO',
       category: 'system',

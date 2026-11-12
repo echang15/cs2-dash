@@ -360,6 +360,7 @@ const appState = {
   ingestionMode: 'simulation', // 'simulation' | 'multi_client' | 'spectator_allplayers'
   soloViewDismissed: false,
   selectedPlayerIdx: 0, // 0..9
+  selectedClientId: new URLSearchParams(window.location.search).get('client') || '',
   lanIp: window.location.hostname || '127.0.0.1',
   port: window.location.port || '3000',
   sseConnected: false,
@@ -2205,12 +2206,20 @@ function applyServerGsiState(serverState) {
   }
 
   const detectedCount = Math.max(1, Math.min(10, serverState.humanPlayers.length));
+  const totalGsiCount = (serverState.clients && serverState.clients.gsiCount) || detectedCount;
   const badge = document.getElementById('gsi-source-badge');
   const badgeText = document.getElementById('gsi-source-text');
   badge.classList.add('gsi-live');
-  badgeText.textContent = serverState.ingestionMode === 'spectator_allplayers'
-    ? `CS2 GSI LIVE (${detectedCount}v${(serverState.bots && serverState.bots.length) || 10} SPECTATOR)`
-    : `CS2 GSI LIVE (${detectedCount} PC${detectedCount > 1 ? 's' : ''} DETECTED)`;
+  if (serverState.activeClientId) {
+    const focusedName = (serverState.humanPlayers[0] && serverState.humanPlayers[0].name) || serverState.activeClientId;
+    badgeText.textContent = `CS2 FEED: ${focusedName} (${detectedCount}v${(serverState.bots && serverState.bots.length) || 10})`;
+  } else if (serverState.ingestionMode === 'spectator_allplayers') {
+    badgeText.textContent = `CS2 GSI LIVE (${detectedCount}v${(serverState.bots && serverState.bots.length) || 10} SPECTATOR)`;
+  } else if (serverState.multiMatchConflict) {
+    badgeText.textContent = `CS2 GSI LIVE (${totalGsiCount} CLIENTS • SWITCH IN CLIENTS)`;
+  } else {
+    badgeText.textContent = `CS2 GSI LIVE (${detectedCount} PC${detectedCount > 1 ? 's' : ''} DETECTED)`;
+  }
 
   appState.humanSide = serverState.humanTeamSide || 'CT';
   appState.botSide = serverState.botTeamSide || 'T';
@@ -2641,7 +2650,8 @@ function renderClientsAndLogsPanel() {
   // Avoid unnecessary DOM rebuilds inside the modal if nothing changed
   const sig = JSON.stringify({
     sse: appState.sseConnected,
-    gsiClients: gsiClients.map(c => `${c.id}:${c.packetsReceived}:${c.slot}`),
+    selectedClientId: appState.selectedClientId,
+    gsiClients: gsiClients.map(c => `${c.id}:${c.packetsReceived}:${c.slot}:${c.mode}:${c.mapName}:${c.score}`),
     displayClients: displayClients.map(d => `${d.id}:${d.view}`),
     topLogId: appState.connectionLogs[0] && appState.connectionLogs[0].id,
     logLen: appState.connectionLogs.length
@@ -2660,19 +2670,33 @@ function renderClientsAndLogsPanel() {
     if (gsiClients.length === 0) {
       gsiListEl.innerHTML = `<div class="client-empty-row">No CS2 GSI clients connected yet. Waiting for packets on <code>http://${appState.lanIp}:${appState.port}/gsi</code></div>`;
     } else {
-      gsiListEl.innerHTML = gsiClients.map(c => {
+      const autoBtnHtml = appState.selectedClientId
+        ? `<div class="client-row" style="justify-content:space-between; background:rgba(56,189,248,0.08); border-color:var(--squad-border);">
+             <span class="client-row-sub" style="color:var(--squad-accent);">FOCUSED ON SINGLE CLIENT FEED</span>
+             <button type="button" class="ctrl-btn mini-btn active" data-focus-client="">AUTO / MERGE ALL</button>
+           </div>`
+        : '';
+      gsiListEl.innerHTML = autoBtnHtml + gsiClients.map(c => {
+        const isFocused = appState.selectedClientId === c.id;
         const modeLabel = c.mode === 'spectator_allplayers'
-          ? 'SPECTATOR ALLPLAYERS'
-          : c.slot ? `SLOT ${String(c.slot).padStart(2, '0')} (${c.team || 'CT'})` : 'MENU / STANDBY';
+          ? `SPECTATOR • ${(c.mapName || '').toUpperCase()}`
+          : c.mode === 'menu_standby'
+            ? 'MENU / STANDBY'
+            : `${(c.mapName || 'MATCH').toUpperCase()} • ${c.team || 'CT'} (${c.score || '0-0'})`;
         return `
-          <div class="client-row">
+          <div class="client-row ${isFocused ? 'focused-client' : ''}">
             <div class="client-row-main">
               <span class="client-row-title">${c.name}</span>
               <span class="client-row-sub">IP: ${c.ip} &bull; ${modeLabel}</span>
             </div>
-            <div class="client-row-meta">
-              <div>ONLINE</div>
-              <div style="color:var(--text-secondary);">${c.packetsReceived} PKTS</div>
+            <div class="client-row-meta" style="display:flex; align-items:center; gap:8px;">
+              <div style="text-align:right;">
+                <div>ONLINE</div>
+                <div style="color:var(--text-secondary);">${c.packetsReceived} PKTS</div>
+              </div>
+              <button type="button" class="ctrl-btn mini-btn ${isFocused ? 'active' : ''}" data-focus-client="${isFocused ? '' : c.id}" title="${isFocused ? 'Return to Auto/Merged view' : 'Isolate dashboard to this client feed'}">
+                ${isFocused ? 'FOCUSED' : 'FOCUS'}
+              </button>
             </div>
           </div>
         `;
@@ -2729,11 +2753,35 @@ function renderClientsAndLogsPanel() {
   }
 }
 
+let activeSseSource = null;
+
+function selectGsiClientFeed(clientId = '') {
+  appState.selectedClientId = clientId || '';
+  if (window.history && window.history.replaceState) {
+    const url = new URL(window.location.href);
+    if (appState.selectedClientId) {
+      url.searchParams.set('client', appState.selectedClientId);
+    } else {
+      url.searchParams.delete('client');
+    }
+    window.history.replaceState({}, '', url.toString());
+  }
+  lastClientsPanelSig = '';
+  renderClientsAndLogsPanel();
+  connectSse();
+}
+
 function connectSse() {
   if (typeof EventSource === 'undefined') return;
   try {
-    const viewQuery = `?view=${encodeURIComponent(appState.viewMode)}&slot=${encodeURIComponent(appState.selectedPlayerIdx + 1)}`;
+    if (activeSseSource) {
+      try { activeSseSource.close(); } catch (_) {}
+      activeSseSource = null;
+    }
+    const clientParam = appState.selectedClientId ? `&client=${encodeURIComponent(appState.selectedClientId)}` : '';
+    const viewQuery = `?view=${encodeURIComponent(appState.viewMode)}&slot=${encodeURIComponent(appState.selectedPlayerIdx + 1)}${clientParam}`;
     const es = new EventSource(`/events${viewQuery}`);
+    activeSseSource = es;
 
     es.onmessage = (evt) => {
       try {
@@ -3287,7 +3335,18 @@ function bindControls() {
   const btnResetClients = document.getElementById('btn-reset-clients');
   if (btnResetClients) {
     btnResetClients.addEventListener('click', () => {
+      appState.selectedClientId = '';
       fetch('/api/reset', { method: 'POST' }).catch(() => {});
+    });
+  }
+
+  const gsiClientsListEl = document.getElementById('gsi-clients-list');
+  if (gsiClientsListEl) {
+    gsiClientsListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-focus-client]');
+      if (!btn) return;
+      const cid = btn.getAttribute('data-focus-client') || '';
+      selectGsiClientFeed(cid);
     });
   }
 
