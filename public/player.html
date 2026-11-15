@@ -164,6 +164,7 @@
             </div>
           </div>
 
+          <button type="button" class="ctrl-btn" id="btn-toggle-radar" title="Toggle Enlarged Floating Radar Overlay">BIG RADAR</button>
           <button type="button" class="ctrl-btn" id="btn-open-trends" title="View Historical Performance Trends Over Time">TRENDS</button>
 
           <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
@@ -366,6 +367,15 @@
     </div>
   </div>
 
+  <div class="radar-floating-panel" id="radar-floating-panel" hidden>
+    <div class="radar-panel-header">
+      <span class="radar-panel-title" id="radar-floating-title">LIVE TACTICAL RADAR</span>
+      <button type="button" class="ctrl-btn mini-btn" id="btn-close-radar">&times;</button>
+    </div>
+    <div class="radar-floating-canvas" id="radar-floating-canvas"></div>
+  </div>
+
+  <script src="/radar-maps.js"></script>
   <script src="/weapon-skins-manifest.js"></script>
   <script src="/app.js"></script>
 </body>

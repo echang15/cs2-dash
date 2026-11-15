@@ -2,12 +2,15 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { WledManager } = require('./wled-manager');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const HISTORY_FILE = path.join(DATA_DIR, 'performance-history.json');
 const MAX_HISTORY_SESSIONS = 250;
+
+const wledManager = new WledManager({ dataDir: DATA_DIR });
 
 // Connected SSE broadcast clients (res -> client metadata)
 const sseClients = new Set();
@@ -583,6 +586,18 @@ function pushServerKillfeedEvent({
   if (gsiStore.killfeed.length > 10) {
     gsiStore.killfeed.length = 10;
   }
+
+  // Trigger WLED lighting for real-time GSI kill events
+  if (attackerType === 'human') {
+    if (isHs && wledManager.config.events.kill_headshot?.enabled) {
+      wledManager.triggerEvent('kill_headshot').catch(() => {});
+    } else {
+      wledManager.triggerEvent('kill_human').catch(() => {});
+    }
+  } else if (victimType === 'human') {
+    wledManager.triggerEvent('human_death').catch(() => {});
+  }
+
   return entry;
 }
 
@@ -613,6 +628,13 @@ function isBotSteamIdOrName(sid, name) {
   // Valve reserved Bot SteamID64 range in CS2
   if (/^765611979602657\d{2}$/.test(String(sid))) return true;
   return false;
+}
+
+function parseGsiVector(vecStr) {
+  if (!vecStr || typeof vecStr !== 'string') return null;
+  const parts = vecStr.split(',').map(v => parseFloat(v.trim()));
+  if (parts.length < 2 || parts.some(Number.isNaN)) return null;
+  return { x: parts[0], y: parts[1], z: parts[2] || 0 };
 }
 
 function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames = []) {
@@ -869,6 +891,8 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
     hsPercent,
     activity: rawPlayer.activity || 'playing',
     observerSlot: typeof rawPlayer.observer_slot === 'number' ? rawPlayer.observer_slot : null,
+    position: parseGsiVector(rawPlayer.position),
+    forward: parseGsiVector(rawPlayer.forward),
     primaryWeapon: parsedWeapons.primary,
     secondaryWeapon: parsedWeapons.secondary,
     knifeWeapon: parsedWeapons.knife || null,
@@ -894,6 +918,7 @@ function syncGlobalGsiStore() {
     gsiStore.botTeamSide = primary.botTeamSide;
     gsiStore.map = { ...primary.map };
     gsiStore.round = { ...primary.round };
+    gsiStore.bomb = primary.bomb ? { ...primary.bomb } : null;
     gsiStore.bots = primary.bots;
     gsiStore.bannerAlert = primary.bannerAlert;
     gsiStore.humanPlayersMap = new Map(primary.humanPlayersMap);
@@ -927,6 +952,7 @@ function syncGlobalGsiStore() {
     gsiStore.botTeamSide = newestSession.botTeamSide;
     gsiStore.map = { ...newestSession.map };
     gsiStore.round = { ...newestSession.round };
+    gsiStore.bomb = newestSession.bomb ? { ...newestSession.bomb } : null;
     gsiStore.bannerAlert = newestSession.bannerAlert;
 
     const mergedPlayers = new Map();
@@ -1023,12 +1049,15 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
           }
         }
       }
+      wledManager.onBombCleared(null);
+      wledManager.triggerEvent('gameover').catch(() => {});
     }
   }
 
   // 2. Per-Session Round & Bomb State
   if (payload.round) {
     const prevBomb = session.round.bomb;
+    const prevPhase = session.round.phase;
     session.round.phase = payload.round.phase || session.round.phase;
     session.round.winTeam = payload.round.win_team || null;
     session.round.bomb = payload.round.bomb || null;
@@ -1041,8 +1070,31 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
         subtitle: 'C4 ARMED — DEFUSE THRESHOLD 10s (5s WITH KIT)',
         timestamp: now
       };
+      wledManager.onBombPlanted(now);
+    } else if (session.round.bomb === 'defused' && prevBomb !== 'defused') {
+      session.round.bombPlantedAt = null;
+      session.lastBombOutcomeAt = now;
+      wledManager.onBombCleared('defused');
+    } else if (session.round.bomb === 'exploded' && prevBomb !== 'exploded') {
+      session.round.bombPlantedAt = null;
+      session.lastBombOutcomeAt = now;
+      wledManager.onBombCleared('exploded');
     } else if (!session.round.bomb) {
       session.round.bombPlantedAt = null;
+      if (prevBomb === 'planted') {
+        wledManager.onBombCleared(null);
+      }
+    }
+
+    if (session.round.phase === 'over' && prevPhase !== 'over') {
+      const recentBombOutcome = session.lastBombOutcomeAt && (now - session.lastBombOutcomeAt < 1800);
+      if (!recentBombOutcome && session.round.winTeam) {
+        const isHumanWin = session.round.winTeam === session.humanTeamSide;
+        wledManager.triggerEvent(isHumanWin ? 'round_win' : 'round_loss').catch(() => {});
+      }
+    } else if ((session.round.phase === 'freezetime' || session.round.phase === 'live') && prevPhase === 'over') {
+      wledManager.onBombCleared(null);
+      wledManager.triggerEvent('round_start').catch(() => {});
     }
   }
 
@@ -1051,6 +1103,14 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
     if (!Number.isNaN(sec)) {
       session.round.phaseTimeLeft = Math.max(0, sec);
     }
+  }
+
+  if (payload.bomb) {
+    session.bomb = {
+      state: payload.bomb.state || null,
+      position: parseGsiVector(payload.bomb.position),
+      player: payload.bomb.player ? String(payload.bomb.player) : null
+    };
   }
 
   // Keep gsiStore.map.round & gsiStore.round.phase aligned with this session while normalizing its players
@@ -1116,7 +1176,9 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
         id: sid,
         name: botName,
         health: currHp,
-        armor: p.state && typeof p.state.armor === 'number' ? p.state.armor : 0
+        armor: p.state && typeof p.state.armor === 'number' ? p.state.armor : 0,
+        position: parseGsiVector(p.position),
+        forward: parseGsiVector(p.forward)
       };
     });
 
@@ -1375,6 +1437,7 @@ function getSerializedGsiState(targetClientId = '') {
       botTeamSide: sess.botTeamSide,
       map: sess.map,
       round: sess.round,
+      bomb: sess.bomb || null,
       humanPlayers: players,
       bots: sess.bots,
       killfeed: gsiStore.killfeed,
@@ -1394,6 +1457,7 @@ function getSerializedGsiState(targetClientId = '') {
     botTeamSide: gsiStore.botTeamSide,
     map: gsiStore.map,
     round: gsiStore.round,
+    bomb: gsiStore.bomb || null,
     humanPlayers,
     bots: gsiStore.bots,
     killfeed: gsiStore.killfeed,
@@ -1453,10 +1517,12 @@ function generateGsiConfig(hostHeader) {
     "round"               "1"
     "player_id"           "1"
     "player_state"        "1"
+    "player_position"     "1"
     "player_weapons"      "1"
     "player_match_stats"  "1"
     "allplayers_id"       "1"
     "allplayers_state"    "1"
+    "allplayers_position" "1"
     "allplayers_match_stats" "1"
     "allplayers_weapons"  "1"
     "phase_countdowns"    "1"
@@ -1713,6 +1779,79 @@ const server = http.createServer((req, res) => {
     broadcastGsiUpdate();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // WLED Network Lighting API
+  if (req.method === 'GET' && url.pathname === '/api/wled/config') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(wledManager.getPublicState()));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/wled/config') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        const state = wledManager.updateConfig(parsed);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, ...state }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/wled/test-device') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        const result = await wledManager.testDevice(parsed.host, parsed.deviceId || null, parsed.identify !== false);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/wled/trigger') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        const result = await wledManager.triggerEvent(parsed.eventKey, {
+          force: Boolean(parsed.force),
+          deviceId: parsed.deviceId || null
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/wled/restore') {
+    wledManager.onBombCleared(null);
+    wledManager.restoreIdle().then(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    }).catch(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    });
     return;
   }
 

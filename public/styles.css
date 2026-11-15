@@ -2294,13 +2294,29 @@ body.res-5120x1440 {
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 336px;
   gap: 14px;
   position: relative;
 }
 
+body.view-mode-player .stage-main-area {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 body.res-5120x1440:not(.view-mode-player) .stage-main-area {
-  grid-template-columns: minmax(0, 1fr) 1220px;
+  grid-template-columns: minmax(0, 1fr) 1380px;
+}
+
+.docked-radar-wing {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+body.res-5120x1440 .docked-radar-wing {
+  display: none !important;
 }
 
 .ultrawide-tactical-wing {
@@ -2308,9 +2324,17 @@ body.res-5120x1440:not(.view-mode-player) .stage-main-area {
   height: 100%;
   min-height: 0;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 420px minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+}
+
+.uw-radar-panel {
+  grid-row: 1 / -1;
+}
+
+.uw-bot-span {
+  grid-column: 2 / -1;
 }
 
 body.res-5120x1440:not(.view-mode-player) .ultrawide-tactical-wing {
@@ -2551,6 +2575,7 @@ body.res-5120x1440:not(.view-mode-player) .ultrawide-tactical-wing {
 }
 
 body.view-mode-player .players-stage-grid,
+body.view-mode-player .docked-radar-wing,
 body.view-mode-player .ultrawide-tactical-wing {
   display: none !important;
 }
@@ -2643,12 +2668,17 @@ body.view-mode-player .player-detail-view {
   min-width: 0;
   max-width: 100%;
   display: grid;
-  grid-template-columns: 460px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 380px minmax(0, 1fr) minmax(0, 1fr) 360px;
   gap: 14px;
 }
 
+.pd-main-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
 body.res-5120x1440.view-mode-player .pd-main-grid {
-  grid-template-columns: 620px minmax(0, 1.15fr) minmax(0, 1.15fr);
+  grid-template-columns: 500px minmax(0, 1.15fr) minmax(0, 1.15fr) 460px;
   gap: 20px;
 }
 
@@ -3792,6 +3822,466 @@ body.res-5120x1440 .pd-main-grid.pd-solo-grid {
   color: #cbd5e1;
   border: 1px solid rgba(148, 163, 184, 0.4);
 }
+
+/* ==========================================================================
+   LIVE TACTICAL RADAR / MINIMAP
+   ========================================================================== */
+.pd-solo-radar-wrap {
+  width: 100%;
+  height: 210px;
+  border: 1px solid var(--border-strong);
+  background: #070c14;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.pd-main-grid.pd-solo-grid .pd-solo-kill-log {
+  max-height: 170px;
+}
+
+.radar-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.radar-dock-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.radar-dock-canvas {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  background: #070c14;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.radar-obj-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.38);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.radar-obj-strip.planted {
+  border-color: rgba(239, 68, 68, 0.65);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.radar-obj-strip.carried {
+  border-color: rgba(250, 204, 21, 0.45);
+  background: rgba(250, 204, 21, 0.1);
+  color: #fde047;
+}
+
+.radar-obj-strip.dropped {
+  border-color: rgba(249, 115, 22, 0.55);
+  background: rgba(249, 115, 22, 0.12);
+  color: #fdba74;
+}
+
+.radar-obj-strip.safe {
+  color: var(--squad-accent);
+}
+
+.radar-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.radar-legend-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.radar-legend-row:hover {
+  border-color: var(--squad-accent);
+  background: rgba(44, 177, 255, 0.08);
+}
+
+.radar-legend-row.dead {
+  opacity: 0.45;
+}
+
+.radar-legend-idx {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--squad-accent);
+  color: #04070d;
+  font-weight: 900;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-legend-row.dead .radar-legend-idx {
+  background: var(--text-muted);
+}
+
+.radar-legend-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.radar-legend-meta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.radar-legend-hp {
+  text-align: right;
+  font-weight: 800;
+  color: var(--hp-high);
+}
+
+.radar-legend-row.dead .radar-legend-hp {
+  color: var(--text-muted);
+}
+
+.radar-bot-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.radar-bot-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.radar-bot-strip-head strong {
+  color: var(--bot-accent);
+}
+
+.radar-bot-pips {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.radar-bot-pip {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--bot-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.radar-bot-pip.dead {
+  opacity: 0.25;
+}
+
+.radar-bot-pip-fill {
+  height: 100%;
+  background: var(--bot-accent);
+  transition: width 0.2s ease;
+}
+
+.radar-floating-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 310px;
+  background: rgba(7, 11, 18, 0.94);
+  border: 1px solid var(--squad-border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.78);
+  border-radius: 6px;
+  padding: 10px;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radar-floating-panel[hidden] {
+  display: none;
+}
+
+.radar-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.radar-panel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--squad-accent);
+}
+
+.radar-floating-canvas {
+  width: 100%;
+  height: 288px;
+  border: 1px solid var(--border-strong);
+  background: #070c14;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   WLED NETWORK LIGHTING MODAL
+   ========================================================================== */
+.wled-modal-panel {
+  width: 1120px;
+  max-width: 95vw;
+  max-height: 90vh;
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-highlight);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.wled-section {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wled-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wled-global-options {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.wled-inline-label,
+.wled-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.wled-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wled-add-device-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 80px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.wled-text-input,
+.wled-select,
+.wled-num-input {
+  background: rgba(8, 12, 20, 0.9);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.wled-num-input {
+  width: 68px;
+}
+
+.wled-color-input {
+  width: 34px;
+  height: 28px;
+  padding: 1px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.wled-devices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wled-device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(12, 18, 30, 0.72);
+  border: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.wled-device-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wled-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #64748b;
+  display: inline-block;
+}
+
+.wled-status-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+}
+
+.wled-status-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.wled-device-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.wled-device-host {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--squad-accent);
+}
+
+.wled-device-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wled-device-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wled-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wled-event-row {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(12, 18, 30, 0.68);
+  border: 1px solid var(--border-subtle);
+}
+
+.wled-event-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.wled-event-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.wled-event-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wled-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+
 
 
 

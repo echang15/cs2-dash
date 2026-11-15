@@ -164,7 +164,9 @@
             </div>
           </div>
 
+          <button type="button" class="ctrl-btn" id="btn-toggle-radar" title="Toggle Enlarged Floating Radar Overlay">BIG RADAR</button>
           <button type="button" class="ctrl-btn" id="btn-open-trends" title="View Historical Performance Trends Over Time">TRENDS</button>
+          <button type="button" class="ctrl-btn" id="btn-open-wled" title="Configure WLED Network Lighting Event Triggers">WLED</button>
 
           <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
           <div class="sim-hover-container" id="sim-hover-container">
@@ -230,9 +232,10 @@
         </div>
       </nav>
 
-      <!-- 3. MAIN BROADCAST STAGE BODY (5-PLAYER CARDS + 32:9 ULTRAWIDE WING + INDIVIDUAL PLAYER DEEP-DIVE VIEW) -->
+      <!-- 3. MAIN BROADCAST STAGE BODY (PLAYER CARDS + ALWAYS-ON RADAR / 32:9 ULTRAWIDE WING + INDIVIDUAL PLAYER DEEP-DIVE VIEW) -->
       <div class="stage-main-area" id="stage-main-area">
         <section class="players-stage-grid" id="players-stage-grid" aria-label="Human Squad Player Cards"></section>
+        <aside class="docked-radar-wing" id="docked-radar-wing" aria-label="Always-On Live Tactical Radar"></aside>
         <aside class="ultrawide-tactical-wing" id="ultrawide-tactical-wing" aria-label="32:9 Super Ultrawide Extended Telemetry"></aside>
         <section class="player-detail-view" id="player-detail-view" aria-label="Individual Player Deep-Dive Telemetry"></section>
       </div>
@@ -366,6 +369,76 @@
     </div>
   </div>
 
+  <!-- WLED Network Lighting Configuration Modal -->
+  <div class="modal-backdrop" id="wled-modal" hidden>
+    <div class="modal-panel wled-modal-panel">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">WLED NETWORK LIGHTING // EVENT TRIGGERS</h3>
+          <p class="modal-sub">TRIGGER WLED EFFECTS OR PRESETS ON KILLS, BOMB COUNTDOWNS &amp; ROUND ENDS</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="ctrl-btn active" id="btn-wled-master-toggle" title="Master enable/disable WLED triggers">WLED: ON</button>
+          <button type="button" class="ctrl-btn" id="btn-wled-restore-idle" title="Restore all WLED devices to idle state now">RESTORE IDLE</button>
+          <button type="button" class="ctrl-btn active" id="btn-wled-save">SAVE CONFIG</button>
+          <button type="button" class="ctrl-btn" id="btn-close-wled">CLOSE [ESC]</button>
+        </div>
+      </div>
+
+      <!-- Devices Management -->
+      <div class="wled-section">
+        <div class="wled-section-header">
+          <span class="sim-modal-title">WLED DEVICES ON NETWORK</span>
+          <div class="wled-global-options">
+            <label class="wled-inline-label">
+              RESTORE:
+              <select id="wled-restore-mode" class="wled-select">
+                <option value="snapshot">Snapshot &amp; Restore</option>
+                <option value="preset">Restore to Preset</option>
+                <option value="none">Keep Effect</option>
+              </select>
+            </label>
+            <label class="wled-inline-label" id="wled-idle-preset-wrap" hidden>
+              IDLE PRESET ID:
+              <input type="number" id="wled-idle-preset" class="wled-num-input" min="1" max="250" value="1" />
+            </label>
+            <label class="wled-checkbox-label" title="Also trigger WLED lights during Dashboard Simulation Mode">
+              <input type="checkbox" id="wled-trigger-in-sim" />
+              <span>TRIGGER IN SIM MODE</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="wled-add-device-row">
+          <input type="text" id="wled-new-name" class="wled-text-input" placeholder="Device Name (e.g. Desk Strip)" maxlength="40" />
+          <input type="text" id="wled-new-host" class="wled-text-input" placeholder="IP or Hostname (e.g. 192.168.1.120 or wled-desk.local)" />
+          <input type="number" id="wled-new-seg" class="wled-num-input" min="-1" max="31" value="0" title="Segment ID (0 = main, -1 = all)" />
+          <button type="button" class="ctrl-btn active" id="btn-wled-add-device">+ ADD DEVICE</button>
+        </div>
+
+        <div class="wled-devices-list" id="wled-devices-list"></div>
+      </div>
+
+      <!-- Event Triggers -->
+      <div class="wled-section">
+        <div class="wled-section-header">
+          <span class="sim-modal-title">IN-GAME EVENT TRIGGERS</span>
+          <span class="wled-hint">Duration 0s = stays active until next state change (ideal for Bomb Countdown)</span>
+        </div>
+        <div class="wled-events-list" id="wled-events-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="radar-floating-panel" id="radar-floating-panel" hidden>
+    <div class="radar-panel-header">
+      <span class="radar-panel-title" id="radar-floating-title">LIVE TACTICAL RADAR</span>
+      <button type="button" class="ctrl-btn mini-btn" id="btn-close-radar">&times;</button>
+    </div>
+    <div class="radar-floating-canvas" id="radar-floating-canvas"></div>
+  </div>
+
+  <script src="/radar-maps.js"></script>
   <script src="/weapon-skins-manifest.js"></script>
   <script src="/app.js"></script>
 </body>

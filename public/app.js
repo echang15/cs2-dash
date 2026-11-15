@@ -361,6 +361,9 @@ const appState = {
   soloViewDismissed: false,
   selectedPlayerIdx: 0, // 0..9
   selectedClientId: new URLSearchParams(window.location.search).get('client') || '',
+  radarOpen: false,
+  bomb: null,
+  simTick: 0,
   lanIp: window.location.hostname || '127.0.0.1',
   port: window.location.port || '3000',
   sseConnected: false,
@@ -625,6 +628,11 @@ function pushKillfeedEvent(attacker, attackerType, weaponName, victim, victimTyp
   if (appState.killfeed.length > 12) {
     appState.killfeed.length = 12;
   }
+  if (attackerType === 'human') {
+    maybeTriggerSimWled(isHs ? 'kill_headshot' : 'kill_human');
+  } else if (victimType === 'human') {
+    maybeTriggerSimWled('human_death');
+  }
 }
 
 function initSimulationState() {
@@ -861,7 +869,8 @@ function renderTopHeader() {
   const botCount = appState.bots.length || 10;
   document.documentElement.style.setProperty('--active-player-count', String(squadCount));
   document.body.dataset.squadSize = String(squadCount);
-  document.body.dataset.squadDensity = squadCount >= 8 ? 'ultra-compact' : squadCount >= 6 ? 'compact' : 'standard';
+  const compactThreshold = appState.displayRes === '5120x1440' ? 6 : 5;
+  document.body.dataset.squadDensity = squadCount >= 8 ? 'ultra-compact' : squadCount >= compactThreshold ? 'compact' : 'standard';
 
   document.querySelectorAll('#modal-squad-size-btns button, #quick-squad-size-btns button').forEach(btn => {
     btn.classList.toggle('active', Number(btn.getAttribute('data-size')) === squadCount);
@@ -1268,6 +1277,101 @@ function renderPlayersStage() {
   });
 }
 
+function buildRadarTelemetryPanelHtml({ includeBotStrip = true, focusedIdx = -1, panelClass = '' } = {}) {
+  const mapLabel = String(appState.mapName || 'DE_MIRAGE').toUpperCase();
+  const radarSvg = window.CS2_RADAR
+    ? window.CS2_RADAR.buildLiveRadarSvg({
+        mapName: appState.mapName,
+        players: appState.players,
+        bots: appState.bots,
+        bomb: appState.bomb,
+        humanSide: appState.humanSide,
+        focusedIdx,
+        simTick: appState.simTick
+      })
+    : '';
+
+  const isPlanted = appState.roundPhase === 'planted';
+  const c4Carrier = appState.players.find(pl => pl.hasC4 && pl.health > 0);
+  const hostageMap = isHostageRescueMap(appState.mapName);
+  let objClass = 'safe';
+  let objLabel = hostageMap ? 'HOSTAGE ZONE' : 'OBJECTIVE CLEAR';
+  let objMeta = appState.roundPhase === 'freezetime' ? 'FREEZETIME' : 'LIVE';
+  if (isPlanted) {
+    objClass = 'planted';
+    objLabel = 'C4 ARMED';
+    objMeta = `${Number(appState.bombTimeLeft || 0).toFixed(1)}S`;
+  } else if (c4Carrier) {
+    objClass = 'carried';
+    objLabel = `C4: ${c4Carrier.name}`;
+    objMeta = 'CARRIED';
+  } else if (appState.bomb && appState.bomb.state === 'dropped') {
+    objClass = 'dropped';
+    objLabel = 'C4 DROPPED';
+    objMeta = 'UNSECURED';
+  }
+
+  const legendRowsHtml = appState.players.map((pl, idx) => {
+    const alive = pl.health > 0;
+    const weaponName = (pl.activeWeapon && pl.activeWeapon.name) || (pl.primaryWeapon && pl.primaryWeapon.name) || 'KNIFE';
+    return `
+      <button type="button" class="radar-legend-row ${alive ? 'alive' : 'dead'}" data-open-player="${idx}" title="Inspect ${pl.name}">
+        <span class="radar-legend-idx">${idx + 1}</span>
+        <span class="radar-legend-name">${pl.name}</span>
+        <span class="radar-legend-meta">${alive ? weaponName : 'KIA'}</span>
+        <span class="radar-legend-hp">${alive ? `${pl.health}` : '0'}</span>
+      </button>
+    `;
+  }).join('');
+
+  const bots = appState.bots || [];
+  const aliveBots = bots.filter(b => b.health > 0).length;
+  const botPipsHtml = includeBotStrip
+    ? `
+      <div class="radar-bot-strip">
+        <div class="radar-bot-strip-head">
+          <span>BOT SWARM</span>
+          <strong>${aliveBots} / ${bots.length || 10} ALIVE</strong>
+        </div>
+        <div class="radar-bot-pips">
+          ${bots.slice(0, 10).map(b => {
+            const alive = b.health > 0;
+            const pct = Math.max(0, Math.min(100, b.health || 0));
+            return `<div class="radar-bot-pip ${alive ? 'alive' : 'dead'}" title="${b.name}: ${alive ? `${b.health} HP` : 'KIA'}"><div class="radar-bot-pip-fill" style="width:${pct}%"></div></div>`;
+          }).join('')}
+        </div>
+      </div>
+    `
+    : '';
+
+  return `
+    <div class="radar-dock-panel ${panelClass}">
+      <div class="uw-panel-header">
+        <span class="uw-panel-title">LIVE TACTICAL RADAR</span>
+        <span class="uw-panel-sub">${mapLabel}</span>
+      </div>
+      <div class="radar-dock-canvas">
+        ${radarSvg}
+      </div>
+      <div class="radar-obj-strip ${objClass}">
+        <span class="radar-obj-label">${objLabel}</span>
+        <span class="radar-obj-meta">${objMeta}</span>
+      </div>
+      <div class="radar-legend-list">
+        ${legendRowsHtml}
+      </div>
+      ${botPipsHtml}
+    </div>
+  `;
+}
+
+function renderDockedRadarWing() {
+  const wingEl = document.getElementById('docked-radar-wing');
+  if (!wingEl) return;
+  if (appState.displayRes === '5120x1440' || getEffectiveViewMode() === 'player') return;
+  wingEl.innerHTML = buildRadarTelemetryPanelHtml({ includeBotStrip: true, focusedIdx: -1 });
+}
+
 function renderUltrawideWing() {
   const wingEl = document.getElementById('ultrawide-tactical-wing');
   if (!wingEl) return;
@@ -1314,7 +1418,9 @@ function renderUltrawideWing() {
   }).join('');
 
   wingEl.innerHTML = `
-    <div class="uw-panel span-2">
+    ${buildRadarTelemetryPanelHtml({ includeBotStrip: false, focusedIdx: -1, panelClass: 'uw-panel uw-radar-panel' })}
+
+    <div class="uw-panel uw-bot-span">
       <div class="uw-panel-header">
         <span class="uw-panel-title">BOT SWARM LIVE TELEMETRY MATRIX (10 UNITS)</span>
         <span class="uw-panel-sub">5120x1440 SUPER ULTRAWIDE COMMAND WING</span>
@@ -1565,8 +1671,23 @@ function renderPlayerDetailView() {
     `;
   }).join('');
 
+  const posSig = appState.mode === 'simulation'
+    ? `sim:${appState.simTick}`
+    : `${p.position ? `${Math.round(p.position.x)},${Math.round(p.position.y)}` : 'nopos'}|${appState.bomb && appState.bomb.position ? `${Math.round(appState.bomb.position.x)},${Math.round(appState.bomb.position.y)}` : 'nobomb'}`;
+  const detailRadarHtml = window.CS2_RADAR
+    ? window.CS2_RADAR.buildLiveRadarSvg({
+        mapName: appState.mapName,
+        players: appState.players,
+        bots: botsList,
+        bomb: appState.bomb,
+        humanSide: currentSide,
+        focusedIdx: safeIdx,
+        simTick: appState.simTick
+      })
+    : '';
+
   const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
-  const detailSig = `${soloActive}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${mvps}|${matchScore}|${p.adr}|${totalDamage}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
+  const detailSig = `${soloActive}|${posSig}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${mvps}|${matchScore}|${p.adr}|${totalDamage}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
   if (detailEl.dataset.detailSig === detailSig) return;
   detailEl.dataset.detailSig = detailSig;
 
@@ -1786,23 +1907,21 @@ function renderPlayerDetailView() {
           <div class="pd-round-bars">
             ${roundBarsHtml}
           </div>
-
-          ${soloActive ? '' : `
-          <div style="margin-top:8px;">
-            <div class="pd-module-header" style="margin-bottom:8px;">
-              <span class="pd-module-title" style="font-size:18px;">RECENT ENGAGEMENT LOG</span>
-              <span class="pd-module-sub">LIVE KILLFEED STREAM</span>
-            </div>
-            <div class="pd-kill-log-list">
-              ${killLogHtml}
-            </div>
-          </div>`}
         </div>
       </div>
 
-      ${soloActive ? `
-      <!-- 4TH COLUMN (SOLO MODE): OPPOSITION BOT SWARM, CLIENT LINK & EXTENDED ENGAGEMENT LOG -->
+      <!-- 4TH COLUMN (ALWAYS-ON): LIVE RADAR, OPPOSITION THREAT MATRIX & ENGAGEMENT LOG -->
       <div class="pd-column">
+        <div class="pd-module pd-solo-radar-module">
+          <div class="pd-module-header">
+            <span class="pd-module-title">LIVE TACTICAL RADAR</span>
+            <span class="pd-module-sub">${String(appState.mapName || 'DE_MIRAGE').toUpperCase()}</span>
+          </div>
+          <div class="pd-solo-radar-wrap">
+            ${detailRadarHtml}
+          </div>
+        </div>
+
         <div class="pd-module">
           <div class="pd-module-header">
             <span class="pd-module-title">OPPOSITION THREAT MATRIX</span>
@@ -1815,28 +1934,57 @@ function renderPlayerDetailView() {
 
         <div class="pd-module fill-space">
           <div class="pd-module-header">
-            <span class="pd-module-title">LIVE ENGAGEMENT LOG</span>
-            <span class="pd-module-sub">SOLO COMBAT FEED</span>
+            <span class="pd-module-title">${soloActive ? 'LIVE ENGAGEMENT LOG' : 'RECENT ENGAGEMENT LOG'}</span>
+            <span class="pd-module-sub">${soloActive ? 'SOLO COMBAT FEED' : 'LIVE KILLFEED STREAM'}</span>
           </div>
           <div class="pd-kill-log-list pd-solo-kill-log">
             ${killLogHtml}
           </div>
+          ${soloActive ? `
           <div class="pd-solo-client-footer">
             <span>SOURCE: <strong>${appState.mode === 'gsi' ? 'CS2 GSI LIVE' : 'SIMULATION'}</strong></span>
             <span>PACKETS: <strong>${clientPackets}</strong></span>
-          </div>
+          </div>` : ''}
         </div>
-      </div>` : ''}
+      </div>
     </div>
   `;
+}
+
+function renderFloatingRadar() {
+  const panelEl = document.getElementById('radar-floating-panel');
+  const canvasEl = document.getElementById('radar-floating-canvas');
+  const titleEl = document.getElementById('radar-floating-title');
+  const toggleBtn = document.getElementById('btn-toggle-radar');
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', Boolean(appState.radarOpen));
+  }
+  if (!panelEl || !canvasEl) return;
+  panelEl.hidden = !appState.radarOpen;
+  if (!appState.radarOpen || !window.CS2_RADAR) return;
+
+  if (titleEl) {
+    titleEl.textContent = `LIVE RADAR // ${String(appState.mapName || 'DE_MIRAGE').toUpperCase()}`;
+  }
+  canvasEl.innerHTML = window.CS2_RADAR.buildLiveRadarSvg({
+    mapName: appState.mapName,
+    players: appState.players,
+    bots: appState.bots,
+    bomb: appState.bomb,
+    humanSide: appState.humanSide,
+    focusedIdx: getEffectiveViewMode() === 'player' ? appState.selectedPlayerIdx : -1,
+    simTick: appState.simTick
+  });
 }
 
 function renderAll() {
   renderTopHeader();
   renderKillfeed();
   renderPlayersStage();
+  renderDockedRadarWing();
   renderUltrawideWing();
   renderPlayerDetailView();
+  renderFloatingRadar();
   renderClientsAndLogsPanel();
 }
 
@@ -1859,6 +2007,8 @@ setInterval(() => {
     renderAll();
     return;
   }
+
+  appState.simTick += 1;
 
   // Advance round or bomb clock
   if (appState.roundPhase === 'planted') {
@@ -2004,11 +2154,13 @@ function triggerPlantBomb() {
     appState.roundPhase = 'live';
     appState.calloutText = 'C4 DEFUSED // ROUND CLOCK RESTORED';
     appState.calloutHighlight = false;
+    maybeTriggerSimWled('bomb_defused');
   } else {
     appState.roundPhase = 'planted';
     appState.bombTimeLeft = 40.0;
     appState.calloutText = 'ALERT: C4 PLANTED AT SITE A // 40.0s DETONATION COUNTDOWN';
     appState.calloutHighlight = true;
+    maybeTriggerSimWled('bomb_planted');
   }
   renderAll();
 }
@@ -2059,6 +2211,7 @@ function triggerNewRound() {
   appState.roundTimeLeft = 115.0;
   appState.bombTimeLeft = 40.0;
   appState.killCelebrations = {};
+  maybeTriggerSimWled('round_win');
 
   const freshTemplates = createInitialSimSquad(appState.humanSide, appState.targetSquadSize);
   appState.players = freshTemplates.map((tmpl, idx) => {
@@ -2225,6 +2378,7 @@ function applyServerGsiState(serverState) {
   appState.botSide = serverState.botTeamSide || 'T';
   appState.mapName = (serverState.map && serverState.map.name) || 'DE_MIRAGE';
   appState.roundNumber = (serverState.map && serverState.map.round) || 1;
+  appState.bomb = serverState.bomb || null;
   appState.humanScore = appState.humanSide === 'CT'
     ? (serverState.map.ctScore || 0)
     : (serverState.map.tScore || 0);
@@ -2910,10 +3064,12 @@ function updateGsiConfigModalText() {
     "round"                  "1"
     "player_id"              "1"
     "player_state"           "1"
+    "player_position"        "1"
     "player_weapons"         "1"
     "player_match_stats"     "1"
     "allplayers_id"          "1"
     "allplayers_state"       "1"
+    "allplayers_position"    "1"
     "allplayers_match_stats" "1"
     "allplayers_weapons"     "1"
     "phase_countdowns"       "1"
@@ -3367,6 +3523,21 @@ function bindControls() {
     });
   }
 
+  const btnToggleRadar = document.getElementById('btn-toggle-radar');
+  const btnCloseRadar = document.getElementById('btn-close-radar');
+  if (btnToggleRadar) {
+    btnToggleRadar.addEventListener('click', () => {
+      appState.radarOpen = !appState.radarOpen;
+      renderFloatingRadar();
+    });
+  }
+  if (btnCloseRadar) {
+    btnCloseRadar.addEventListener('click', () => {
+      appState.radarOpen = false;
+      renderFloatingRadar();
+    });
+  }
+
   const btnOpenTrends = document.getElementById('btn-open-trends');
   const btnCloseTrends = document.getElementById('btn-close-trends');
   const trendsModal = document.getElementById('trends-modal');
@@ -3624,5 +3795,367 @@ initSimulationState();
 initRosterEditor();
 updateGsiConfigModalText();
 bindControls();
+initWledController();
 renderAll();
 connectSse();
+
+/* ==========================================================================
+   WLED NETWORK LIGHTING CONTROLLER
+   ========================================================================== */
+const wledUiState = {
+  config: null,
+  statuses: {},
+  effectsCatalog: [],
+  eventMetadata: {}
+};
+
+function maybeTriggerSimWled(eventKey) {
+  if (appState.mode === 'gsi') return;
+  if (!wledUiState.config || !wledUiState.config.enabled || !wledUiState.config.triggerInSim) return;
+  fetch('/api/wled/trigger', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ eventKey })
+  }).catch(() => {});
+}
+
+async function fetchWledConfig() {
+  try {
+    const resp = await fetch('/api/wled/config');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    wledUiState.config = data.config;
+    wledUiState.statuses = data.statuses || {};
+    wledUiState.effectsCatalog = data.effectsCatalog || [];
+    wledUiState.eventMetadata = data.eventMetadata || {};
+    renderWledModal();
+  } catch (_) {}
+}
+
+async function saveWledConfig({ silent = false } = {}) {
+  if (!wledUiState.config) return;
+  try {
+    const resp = await fetch('/api/wled/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(wledUiState.config)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      wledUiState.config = data.config;
+      wledUiState.statuses = data.statuses || {};
+      renderWledModal();
+      if (!silent) {
+        showToastNotification({
+          category: 'system',
+          title: 'WLED CONFIG SAVED',
+          message: `${wledUiState.config.devices.length} device(s) configured`
+        });
+      }
+    }
+  } catch (_) {}
+}
+
+function renderWledModal() {
+  const cfg = wledUiState.config;
+  if (!cfg) return;
+
+  const masterBtn = document.getElementById('btn-wled-master-toggle');
+  if (masterBtn) {
+    masterBtn.textContent = cfg.enabled ? 'WLED: ON' : 'WLED: OFF';
+    masterBtn.classList.toggle('active', Boolean(cfg.enabled));
+  }
+
+  const restoreSelect = document.getElementById('wled-restore-mode');
+  if (restoreSelect) restoreSelect.value = cfg.restoreMode || 'snapshot';
+
+  const idlePresetWrap = document.getElementById('wled-idle-preset-wrap');
+  const idlePresetInput = document.getElementById('wled-idle-preset');
+  if (idlePresetWrap) idlePresetWrap.hidden = cfg.restoreMode !== 'preset';
+  if (idlePresetInput) idlePresetInput.value = cfg.idlePresetId || 1;
+
+  const simCheck = document.getElementById('wled-trigger-in-sim');
+  if (simCheck) simCheck.checked = Boolean(cfg.triggerInSim);
+
+  // Render devices
+  const devicesList = document.getElementById('wled-devices-list');
+  if (devicesList) {
+    if (!cfg.devices || cfg.devices.length === 0) {
+      devicesList.innerHTML = `<div class="wled-hint" style="padding:8px 0;">No WLED devices added yet. Enter a WLED IP address or mDNS hostname above (e.g. <code>192.168.1.120</code> or <code>wled-desk.local</code>).</div>`;
+    } else {
+      devicesList.innerHTML = cfg.devices.map(dev => {
+        const st = wledUiState.statuses[dev.id] || {};
+        const dotClass = st.online === true ? 'online' : st.online === false ? 'offline' : '';
+        const metaText = st.online === true
+          ? `${st.ledCount ? `${st.ledCount} LEDs` : 'Online'}${st.ver ? ` • v${st.ver}` : ''}${st.lastLatencyMs != null ? ` • ${st.lastLatencyMs}ms` : ''}`
+          : st.online === false
+            ? `Offline (${st.error || 'Unreachable'})`
+            : 'Not tested yet';
+        return `
+          <div class="wled-device-row" data-dev-id="${dev.id}">
+            <div class="wled-device-info">
+              <span class="wled-status-dot ${dotClass}" title="${metaText}"></span>
+              <label class="wled-checkbox-label">
+                <input type="checkbox" class="wled-dev-enable" data-dev-id="${dev.id}" ${dev.enabled ? 'checked' : ''} />
+                <span class="wled-device-name">${escapeHtml(dev.name)}</span>
+              </label>
+              <span class="wled-device-host">${escapeHtml(dev.host)}</span>
+              <span class="wled-device-meta">SEG ${dev.segmentId < 0 ? 'ALL' : dev.segmentId} &bull; ${escapeHtml(metaText)}</span>
+            </div>
+            <div class="wled-device-actions">
+              <button type="button" class="ctrl-btn mini-btn wled-dev-ping" data-dev-id="${dev.id}">PING / IDENTIFY</button>
+              <button type="button" class="ctrl-btn mini-btn danger wled-dev-remove" data-dev-id="${dev.id}">REMOVE</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Render events
+  const eventsList = document.getElementById('wled-events-list');
+  if (eventsList) {
+    const effectOpts = (selectedFx) => wledUiState.effectsCatalog.map(fx =>
+      `<option value="${fx.id}" ${Number(selectedFx) === fx.id ? 'selected' : ''}>${fx.id}: ${escapeHtml(fx.name)}</option>`
+    ).join('');
+
+    eventsList.innerHTML = Object.entries(cfg.events).map(([key, evt]) => {
+      const meta = wledUiState.eventMetadata[key] || { label: key.toUpperCase(), description: '' };
+      const durSec = Number(((evt.durationMs || 0) / 1000).toFixed(1));
+      return `
+        <div class="wled-event-row" data-event-key="${key}">
+          <div>
+            <label class="wled-event-title">
+              <input type="checkbox" class="wled-evt-enable" data-event-key="${key}" ${evt.enabled ? 'checked' : ''} />
+              <span>${escapeHtml(meta.label)}</span>
+            </label>
+            <div class="wled-event-desc">${escapeHtml(meta.description)}</div>
+          </div>
+
+          <div class="wled-event-controls">
+            <label class="wled-field">
+              MODE
+              <select class="wled-select wled-evt-mode" data-event-key="${key}">
+                <option value="effect" ${evt.mode === 'effect' ? 'selected' : ''}>Effect</option>
+                <option value="preset" ${evt.mode === 'preset' ? 'selected' : ''}>WLED Preset</option>
+                <option value="restore" ${evt.mode === 'restore' ? 'selected' : ''}>Restore Idle</option>
+              </select>
+            </label>
+
+            ${evt.mode === 'effect' ? `
+              <label class="wled-field">
+                FX
+                <select class="wled-select wled-evt-fx" data-event-key="${key}">${effectOpts(evt.fx)}</select>
+              </label>
+              <label class="wled-field">
+                COL1
+                <input type="color" class="wled-color-input wled-evt-color" data-event-key="${key}" value="${evt.color}" />
+              </label>
+              <label class="wled-field">
+                COL2
+                <input type="color" class="wled-color-input wled-evt-color2" data-event-key="${key}" value="${evt.color2 || '#000000'}" />
+              </label>
+              <label class="wled-field" title="Effect Speed (0-255)">
+                SPD
+                <input type="number" class="wled-num-input wled-evt-sx" data-event-key="${key}" min="0" max="255" value="${evt.sx}" />
+              </label>
+              <label class="wled-field" title="Effect Intensity (0-255)">
+                INT
+                <input type="number" class="wled-num-input wled-evt-ix" data-event-key="${key}" min="0" max="255" value="${evt.ix}" />
+              </label>
+            ` : ''}
+
+            ${evt.mode === 'preset' ? `
+              <label class="wled-field">
+                PRESET ID
+                <input type="number" class="wled-num-input wled-evt-preset" data-event-key="${key}" min="1" max="250" value="${evt.presetId || 1}" />
+              </label>
+            ` : ''}
+
+            ${evt.mode !== 'restore' ? `
+              <label class="wled-field" title="Brightness (1-255)">
+                BRI
+                <input type="number" class="wled-num-input wled-evt-bri" data-event-key="${key}" min="1" max="255" value="${evt.bri}" />
+              </label>
+              <label class="wled-field" title="Duration in seconds (0 = continuous until next event)">
+                DUR(s)
+                <input type="number" class="wled-num-input wled-evt-dur" data-event-key="${key}" min="0" max="60" step="0.5" value="${durSec}" />
+              </label>
+            ` : ''}
+          </div>
+
+          <div>
+            <button type="button" class="ctrl-btn mini-btn wled-evt-test" data-event-key="${key}">TEST</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function initWledController() {
+  fetchWledConfig();
+
+  const modalEl = document.getElementById('wled-modal');
+  const openBtn = document.getElementById('btn-open-wled');
+  const closeBtn = document.getElementById('btn-close-wled');
+
+  if (openBtn && modalEl) {
+    openBtn.addEventListener('click', () => {
+      modalEl.hidden = false;
+      fetchWledConfig();
+    });
+  }
+  if (closeBtn && modalEl) {
+    closeBtn.addEventListener('click', () => {
+      modalEl.hidden = true;
+    });
+  }
+  if (modalEl) {
+    modalEl.addEventListener('click', (e) => {
+      if (e.target === modalEl) modalEl.hidden = true;
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modalEl.hidden) modalEl.hidden = true;
+    });
+  }
+
+  document.getElementById('btn-wled-master-toggle')?.addEventListener('click', () => {
+    if (!wledUiState.config) return;
+    wledUiState.config.enabled = !wledUiState.config.enabled;
+    saveWledConfig({ silent: true });
+  });
+
+  document.getElementById('btn-wled-save')?.addEventListener('click', () => {
+    saveWledConfig({ silent: false });
+  });
+
+  document.getElementById('btn-wled-restore-idle')?.addEventListener('click', async () => {
+    await fetch('/api/wled/restore', { method: 'POST' }).catch(() => {});
+  });
+
+  document.getElementById('wled-restore-mode')?.addEventListener('change', (e) => {
+    if (!wledUiState.config) return;
+    wledUiState.config.restoreMode = e.target.value;
+    renderWledModal();
+  });
+
+  document.getElementById('wled-idle-preset')?.addEventListener('change', (e) => {
+    if (!wledUiState.config) return;
+    wledUiState.config.idlePresetId = Number(e.target.value) || 1;
+  });
+
+  document.getElementById('wled-trigger-in-sim')?.addEventListener('change', (e) => {
+    if (!wledUiState.config) return;
+    wledUiState.config.triggerInSim = Boolean(e.target.checked);
+    saveWledConfig({ silent: true });
+  });
+
+  document.getElementById('btn-wled-add-device')?.addEventListener('click', async () => {
+    if (!wledUiState.config) return;
+    const nameInput = document.getElementById('wled-new-name');
+    const hostInput = document.getElementById('wled-new-host');
+    const segInput = document.getElementById('wled-new-seg');
+    const host = (hostInput?.value || '').trim();
+    if (!host) return;
+    const newId = `wled-${Date.now()}`;
+    wledUiState.config.devices.push({
+      id: newId,
+      name: (nameInput?.value || '').trim() || host,
+      host,
+      enabled: true,
+      segmentId: Number(segInput?.value ?? 0)
+    });
+    if (nameInput) nameInput.value = '';
+    if (hostInput) hostInput.value = '';
+    await saveWledConfig({ silent: true });
+    // Auto-ping newly added device
+    const pingRes = await fetch('/api/wled/test-device', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, deviceId: newId, identify: true })
+    }).then(r => r.json()).catch(() => null);
+    if (pingRes && pingRes.status) {
+      wledUiState.statuses[newId] = pingRes.status;
+      renderWledModal();
+    }
+  });
+
+  // Delegated listeners for devices list
+  document.getElementById('wled-devices-list')?.addEventListener('click', async (e) => {
+    const target = e.target;
+    const devId = target.getAttribute('data-dev-id');
+    if (!devId || !wledUiState.config) return;
+
+    if (target.classList.contains('wled-dev-remove')) {
+      wledUiState.config.devices = wledUiState.config.devices.filter(d => d.id !== devId);
+      saveWledConfig({ silent: true });
+    } else if (target.classList.contains('wled-dev-ping')) {
+      const dev = wledUiState.config.devices.find(d => d.id === devId);
+      if (!dev) return;
+      target.textContent = 'PINGING...';
+      const res = await fetch('/api/wled/test-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: dev.host, deviceId: dev.id, identify: true })
+      }).then(r => r.json()).catch(() => null);
+      if (res && res.status) {
+        wledUiState.statuses[dev.id] = res.status;
+      }
+      renderWledModal();
+    }
+  });
+
+  document.getElementById('wled-devices-list')?.addEventListener('change', (e) => {
+    const target = e.target;
+    const devId = target.getAttribute('data-dev-id');
+    if (!devId || !wledUiState.config) return;
+    if (target.classList.contains('wled-dev-enable')) {
+      const dev = wledUiState.config.devices.find(d => d.id === devId);
+      if (dev) {
+        dev.enabled = Boolean(target.checked);
+        saveWledConfig({ silent: true });
+      }
+    }
+  });
+
+  // Delegated listeners for events list
+  const eventsListEl = document.getElementById('wled-events-list');
+  eventsListEl?.addEventListener('change', (e) => {
+    const t = e.target;
+    const key = t.getAttribute('data-event-key');
+    if (!key || !wledUiState.config?.events?.[key]) return;
+    const evt = wledUiState.config.events[key];
+
+    if (t.classList.contains('wled-evt-enable')) evt.enabled = Boolean(t.checked);
+    else if (t.classList.contains('wled-evt-mode')) { evt.mode = t.value; renderWledModal(); }
+    else if (t.classList.contains('wled-evt-fx')) evt.fx = Number(t.value) || 0;
+    else if (t.classList.contains('wled-evt-color')) evt.color = t.value;
+    else if (t.classList.contains('wled-evt-color2')) evt.color2 = t.value;
+    else if (t.classList.contains('wled-evt-sx')) evt.sx = Number(t.value) || 0;
+    else if (t.classList.contains('wled-evt-ix')) evt.ix = Number(t.value) || 0;
+    else if (t.classList.contains('wled-evt-preset')) evt.presetId = Number(t.value) || 1;
+    else if (t.classList.contains('wled-evt-bri')) evt.bri = Number(t.value) || 255;
+    else if (t.classList.contains('wled-evt-dur')) evt.durationMs = Math.round((Number(t.value) || 0) * 1000);
+  });
+
+  eventsListEl?.addEventListener('click', async (e) => {
+    const t = e.target;
+    if (!t.classList.contains('wled-evt-test')) return;
+    const key = t.getAttribute('data-event-key');
+    if (!key) return;
+    await saveWledConfig({ silent: true });
+    const res = await fetch('/api/wled/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventKey: key, force: true })
+    }).then(r => r.json()).catch(() => null);
+    if (res && res.reason === 'no_devices') {
+      showToastNotification({
+        category: 'system',
+        title: 'NO WLED DEVICES ENABLED',
+        message: 'Add and enable at least one WLED device above to test effects.'
+      });
+    }
+  });
+}
