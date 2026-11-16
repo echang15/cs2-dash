@@ -7,7 +7,7 @@ ENV PORT=3000
 ENV DATA_DIR=/app/data
 
 # Copy application source (zero external npm dependencies)
-COPY package.json server.js wled-manager.js ./
+COPY package.json server.js wled-manager.js wled-discovery.js ./
 COPY public ./public
 
 # Create persistent data directory for match performance trends

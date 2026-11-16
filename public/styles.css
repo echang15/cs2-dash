@@ -971,7 +971,8 @@ html, body {
   border-top: 4px solid var(--squad-accent);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 232px 128px 220px 138px 1fr;
+  /* identity | vitals+ammo | portrait window | weapon | utility | stats */
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
   min-width: 0;
   position: relative;
   overflow: hidden;
@@ -1223,7 +1224,14 @@ html, body {
   justify-content: flex-start;
   position: relative;
   cursor: pointer;
-  background: linear-gradient(180deg, rgba(6, 9, 15, 0.62) 0%, transparent 34%, transparent 72%, rgba(6, 9, 15, 0.55) 100%);
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(6, 9, 15, 0.72) 0%, rgba(6, 9, 15, 0.45) 100%);
+}
+
+/* Transparent window that lets the operator model show between vitals and loadout */
+.card-zone-portrait {
+  min-height: 0;
+  cursor: pointer;
 }
 
 .operator-hero-row {
@@ -1320,8 +1328,84 @@ html, body {
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  background: rgba(0, 0, 0, 0.22);
+  justify-content: flex-start;
+  gap: 10px;
+  background: rgba(4, 6, 10, 0.58);
+  backdrop-filter: blur(2px);
+}
+
+/* Ammo strip sits directly under the HP bar */
+.card-zone-vitals .ammo-telemetry-row {
+  align-items: center;
+}
+
+.card-zone-vitals .magazine-bullet-track {
+  flex: 1;
+}
+
+/* Round kill indicators: 10 slots, filled per kill this round */
+.round-kill-pips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.round-kill-pips-track {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.rk-pip {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transform: skewX(-14deg);
+}
+
+.rk-pip.filled {
+  background: var(--squad-accent);
+  border-color: var(--squad-accent);
+  box-shadow: 0 0 6px var(--squad-accent);
+}
+
+.round-kill-pips.is-multi .rk-pip.filled {
+  background: #facc15;
+  border-color: #facc15;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+}
+
+.round-kill-pips.is-ace .rk-pip.filled {
+  background: #ff4d5e;
+  border-color: #ff4d5e;
+  box-shadow: 0 0 9px rgba(255, 77, 94, 0.75);
+}
+
+.round-kill-pips-count {
+  min-width: 18px;
+  text-align: right;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-squad-density="ultra-compact"] .round-kill-pips {
+  gap: 4px;
+  font-size: 8px;
+}
+
+body[data-squad-density="ultra-compact"] .round-kill-pips-label {
+  display: none;
+}
+
+body[data-squad-density="ultra-compact"] .rk-pip {
+  height: 7px;
 }
 
 .vitals-numbers-row {
@@ -3556,6 +3640,24 @@ body.res-5120x1440 .pd-main-grid.pd-solo-grid {
   transition: width 150ms linear;
 }
 
+/* Player page: enlarged threat matrix occupying the slot the combat matrix used */
+.pd-solo-bot-grid.pd-threat-large {
+  gap: 10px;
+}
+
+.pd-threat-large .pd-solo-bot-row {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.pd-threat-large .pd-solo-bot-head {
+  font-size: 14px;
+}
+
+.pd-threat-large .pd-solo-bot-bar {
+  height: 7px;
+}
+
 .pd-solo-kill-log {
   max-height: 290px;
   overflow: hidden;
@@ -3609,6 +3711,57 @@ body.res-5120x1440 .pd-main-grid.pd-solo-grid {
   object-fit: contain;
   color: var(--text-primary);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.75));
+}
+
+/* Real skin renders (Steam images, 512x384 with wide transparent margins above and below the gun):
+   a 2:1 box with object-fit: cover trims that empty band so the gun fills the stage width. */
+.weapon-silhouette-stage img.weapon-skin-photo,
+.pd-weapon-svg-wrap img.weapon-skin-photo,
+.pd-solo-melee-svg img.weapon-skin-photo {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: center 52%;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.9));
+}
+
+.pd-weapon-svg-wrap img.weapon-skin-photo {
+  width: auto;
+  height: 96px;
+  max-width: 92%;
+}
+
+/* Card weapon area is a fixed-height strip: fit the render to its height so it never covers the weapon name */
+.weapon-silhouette-stage img.weapon-skin-photo {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 2.2 / 1;
+}
+
+.weapon-silhouette-stage img.weapon-skin-photo--long {
+  aspect-ratio: 3 / 1;
+}
+
+.pd-sidearm-svg img.weapon-skin-photo,
+.pd-solo-melee-svg img.weapon-skin-photo {
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: center 52%;
+  max-width: 100%;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.75));
+}
+
+.weapon-art-fallback {
+  display: contents;
+}
+
+.weapon-art-fallback[hidden] {
+  display: none;
 }
 
 /* ==========================================================================
@@ -4272,6 +4425,56 @@ body.res-5120x1440 .pd-main-grid.pd-solo-grid {
   flex-wrap: wrap;
 }
 
+.wled-event-lights {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.wled-event-lights-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.wled-event-lights-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wled-light-chip {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.wled-light-chip:hover {
+  border-color: rgba(56, 189, 248, 0.6);
+  color: var(--text-primary);
+}
+
+.wled-light-chip.is-on {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.85);
+  color: #e0f4ff;
+}
+
+.wled-light-chip.is-disabled {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
 .wled-field {
   display: inline-flex;
   align-items: center;
@@ -4287,3 +4490,56 @@ body.res-5120x1440 .pd-main-grid.pd-solo-grid {
 
 
 
+
+/* Player page engagement log: keep entries anchored under the header; footer stays pinned via margin-top:auto */
+.pd-module.fill-space.pd-log-module {
+  justify-content: flex-start;
+}
+
+/* Player page: round damage chart stretches to fill its panel instead of a fixed height */
+.pd-module.pd-round-dmg-module {
+  justify-content: flex-start;
+}
+
+.pd-module.pd-round-dmg-module .pd-round-bars {
+  flex: 1;
+  height: auto;
+  min-height: 110px;
+}
+
+/* WLED network scan (auto-detect) */
+.wled-discover-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.wled-discover-bar .ctrl-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.wled-discover-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  margin: 4px 0 10px;
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.wled-discover-row.is-added {
+  opacity: 0.6;
+}
+
+.wled-discover-added {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--hp-high);
+  padding: 3px 8px;
+  border: 1px solid rgba(38, 230, 137, 0.45);
+}

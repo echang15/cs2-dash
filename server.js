@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { WledManager } = require('./wled-manager');
+const { discoverWledDevices } = require('./wled-discovery');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -479,6 +480,8 @@ function parsePlayerWeapons(weaponsObj = {}) {
         id: 'knife',
         name: (meta && meta.name) ? meta.name : 'Tactical Knife',
         skin: w.paintkit && w.paintkit !== 'default' ? w.paintkit.replace(/_/g, ' ').toUpperCase() : 'STANDARD ISSUE',
+        weaponClass: rawName,
+        paintkit: w.paintkit || 'default',
         category: 'knife',
         clip: 0,
         clipMax: 0,
@@ -507,6 +510,8 @@ function parsePlayerWeapons(weaponsObj = {}) {
       id: meta.id,
       name: meta.name,
       skin: w.paintkit && w.paintkit !== 'default' ? w.paintkit.replace(/_/g, ' ').toUpperCase() : 'FACTORY ISSUE',
+      weaponClass: rawName,
+      paintkit: w.paintkit || 'default',
       category: meta.category,
       clip: typeof w.ammo_clip === 'number' ? w.ammo_clip : meta.clipMax,
       clipMax: w.ammo_clip_max || meta.clipMax,
@@ -637,7 +642,10 @@ function parseGsiVector(vecStr) {
   return { x: parts[0], y: parts[1], z: parts[2] || 0 };
 }
 
-function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames = []) {
+// Trackers are scoped per GSI session (trackerKey = `${clientKey}|${steamId}`): the same human can appear in both
+// their own PC's feed and an observer's allplayers feed, and a shared tracker lets one feed consume the other's kill deltas.
+// emitEvents=false updates stats without pushing killfeed entries (used when another feed already reports this player).
+function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames = [], { trackerKey = steamId, emitEvents = true } = {}) {
   const state = rawPlayer.state || {};
   const stats = rawPlayer.match_stats || {};
   const parsedWeapons = parsePlayerWeapons(rawPlayer.weapons || {});
@@ -659,7 +667,7 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
   const currSecondaryId = parsedWeapons.secondary ? parsedWeapons.secondary.id : null;
   const currSecondaryClip = parsedWeapons.secondary ? parsedWeapons.secondary.clip : null;
 
-  let tracker = playerCombatTracker.get(steamId);
+  let tracker = playerCombatTracker.get(trackerKey);
   if (!tracker) {
     const initialTotalKills = rawStatsKills !== null ? Math.max(rawStatsKills, roundKills) : roundKills;
     const initialTotalDeaths = rawStatsDeaths !== null ? rawStatsDeaths : (health <= 0 ? 1 : 0);
@@ -691,7 +699,7 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
       lastSecondaryId: currSecondaryId,
       lastSecondaryClip: currSecondaryClip
     };
-    playerCombatTracker.set(steamId, tracker);
+    playerCombatTracker.set(trackerKey, tracker);
   } else {
     // Detect round reset ONLY when round_kills drops back down (e.g., new round freezetime)
     // or when map.round advances AND round_kills is 0
@@ -764,7 +772,7 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
       }
     }
 
-    if (killsDelta > 0 && killsDelta <= 5) {
+    if (killsDelta > 0 && killsDelta <= 5 && emitEvents) {
       const usedWeaponName = resolveKillWeaponName(parsedWeapons, tracker);
       for (let k = 0; k < killsDelta; k++) {
         const isHsKill = k < hsDelta;
@@ -788,6 +796,9 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
       tracker.totalHsKills += hsDelta;
       // A confirmed kill absorbs prior chip damage on that target (1 kill = 100 HP in CS2)
       tracker.unconfirmedChipDamage = 0;
+    } else if (killsDelta > 0 && killsDelta <= 5) {
+      tracker.totalHsKills += hsDelta;
+      tracker.unconfirmedChipDamage = 0;
     } else if (shotChipAdded > 0) {
       tracker.unconfirmedChipDamage = Math.min(72, (tracker.unconfirmedChipDamage || 0) + shotChipAdded);
     }
@@ -807,7 +818,7 @@ function normalizeGsiPlayer(steamId, rawPlayer, slotIndex = 0, newlyDeadBotNames
         ? Math.max(rawStatsDeaths, tracker.lastEffectiveDeaths + (diedThisTick ? 1 : 0))
         : tracker.lastEffectiveDeaths + 1;
 
-      if (diedThisTick) {
+      if (diedThisTick && emitEvents) {
         const aliveBot = gsiStore.bots.find(b => b.health > 0);
         const killerBotName = (aliveBot && aliveBot.name) || DEFAULT_BOT_NAMES[slotIndex % DEFAULT_BOT_NAMES.length];
         const botWeapon = gsiStore.botTeamSide === 'T' ? 'AK-47' : 'M4A1-S';
@@ -994,6 +1005,15 @@ function syncGlobalGsiStore() {
   gsiStore.bots = [];
 }
 
+function isPlayerCoveredBySpectator(steamId, excludeClientKey, now = Date.now()) {
+  for (const s of clientSessions.values()) {
+    if (s.id === excludeClientKey || s.mode !== 'spectator_allplayers') continue;
+    if (now - s.lastPacketAt > GSI_CLIENT_TIMEOUT_MS) continue;
+    if (s.humanPlayersMap.has(steamId)) return true;
+  }
+  return false;
+}
+
 function handleGsiPayload(payload, clientIp = '127.0.0.1') {
   const now = Date.now();
   gsiStore.lastPacketAt = now;
@@ -1084,6 +1104,11 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       if (prevBomb === 'planted') {
         wledManager.onBombCleared(null);
       }
+    }
+
+    // The bomb banner is only valid while C4 is armed; clear it so it stops overriding kill callouts
+    if (session.round.bomb !== 'planted' && session.bannerAlert && session.bannerAlert.type === 'bomb') {
+      session.bannerAlert = null;
     }
 
     if (session.round.phase === 'over' && prevPhase !== 'over') {
@@ -1184,7 +1209,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
 
     session.humanPlayersMap.clear();
     humanEntries.forEach(([sid, p], idx) => {
-      const normalized = normalizeGsiPlayer(sid, p, idx, newlyDeadBotNames);
+      const normalized = normalizeGsiPlayer(sid, p, idx, newlyDeadBotNames, { trackerKey: `${clientKey}|${sid}` });
       session.humanPlayersMap.set(sid, normalized);
     });
 
@@ -1251,6 +1276,8 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
     const sid = String(payload.player.steamid || payload.player.name);
     const isOwnPlayer = !providerSid || providerSid === sid;
     const isBotPlayer = isBotSteamIdOrName(sid, payload.player.name);
+    // An observer PC streaming allplayers already reports this player's kills/deaths with real victim names
+    const coveredBySpectator = isPlayerCoveredBySpectator(providerSid || sid, clientKey, now);
 
     if (isOwnPlayer && payload.player.team && !isBotPlayer) {
       session.humanTeamSide = payload.player.team;
@@ -1262,7 +1289,7 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
     // If the local player (`providerSid`) is spectating someone else (`!isOwnPlayer`), it means the local player is dead this round!
     if (!isOwnPlayer && providerSid && session.humanPlayersMap.has(providerSid)) {
       const ownEntry = session.humanPlayersMap.get(providerSid);
-      const ownTracker = playerCombatTracker.get(providerSid);
+      const ownTracker = playerCombatTracker.get(`${clientKey}|${providerSid}`);
       if (ownEntry && ownEntry.health > 0) {
         ownEntry.health = 0;
         ownEntry.armor = 0;
@@ -1270,15 +1297,15 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
         ownEntry.burning = 0;
         ownEntry.deaths = (ownEntry.deaths || 0) + 1;
         if (ownTracker) {
-          ownTracker.prevHealth = 0;
-          ownTracker.deaths = Math.max(ownTracker.deaths || 0, ownEntry.deaths);
+          ownTracker.lastHealth = 0;
+          ownTracker.lastEffectiveDeaths = Math.max(ownTracker.lastEffectiveDeaths || 0, ownEntry.deaths);
         }
         const botIdx = ((ownEntry.slot || 1) + (session.map.round || 1)) % DEFAULT_BOT_NAMES.length;
         const killerBot = isBotPlayer && payload.player.name
           ? (payload.player.name.toUpperCase().startsWith('BOT ') ? payload.player.name : `BOT ${payload.player.name.toUpperCase()}`)
           : DEFAULT_BOT_NAMES[botIdx];
         const botWeapon = session.botTeamSide === 'T' ? 'AK-47' : 'M4A1-S';
-        pushServerKillfeedEvent({
+        if (!coveredBySpectator) pushServerKillfeedEvent({
           attacker: killerBot,
           attackerType: 'bot',
           weaponName: botWeapon,
@@ -1293,7 +1320,10 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
 
     // Only track this client's own human player in their isolated session
     if (!isBotPlayer && isOwnPlayer) {
-      const normalized = normalizeGsiPlayer(sid, payload.player, 0);
+      const normalized = normalizeGsiPlayer(sid, payload.player, 0, [], {
+        trackerKey: `${clientKey}|${sid}`,
+        emitEvents: !coveredBySpectator
+      });
       session.humanPlayersMap.set(sid, normalized);
     }
 
@@ -1382,6 +1412,20 @@ function handleGsiPayload(payload, clientIp = '127.0.0.1') {
       existingClient.mapName = null;
       existingClient.lastSeenAt = now;
       existingClient.packetsReceived += 1;
+    }
+  }
+
+  // Older .cfg files lack player_position / allplayers_position, which leaves the radar with no real positions
+  if (session.mode !== 'menu_standby' && !session.warnedMissingPosition) {
+    const rawPlayers = hasAllPlayers ? Object.values(payload.allplayers) : (payload.player ? [payload.player] : []);
+    if (rawPlayers.length > 0 && rawPlayers.every(p => !p || !p.position)) {
+      session.warnedMissingPosition = true;
+      recordServerLog({
+        level: 'WARN',
+        category: 'system',
+        title: 'GSI CLIENT MISSING POSITION DATA',
+        message: `${clientIp} is not sending ${hasAllPlayers ? 'allplayers_position' : 'player_position'} — re-download gamestate_integration_cs2dash.cfg and restart CS2 to enable the live radar`
+      });
     }
   }
 
@@ -1803,6 +1847,28 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ ok: false, error: 'Invalid JSON' }));
       }
     });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/wled/discover') {
+    discoverWledDevices()
+      .then(result => {
+        const configuredHosts = new Set(wledManager.config.devices.map(d => String(d.host).toLowerCase()));
+        const devices = result.devices.map(d => ({ ...d, configured: configuredHosts.has(d.host.toLowerCase()) }));
+        recordServerLog({
+          level: 'INFO',
+          category: 'system',
+          title: 'WLED NETWORK SCAN COMPLETE',
+          message: `Found ${devices.length} WLED device(s) on ${result.subnets.map(s => `${s}.0/24`).join(', ') || 'mDNS only'} in ${(result.durationMs / 1000).toFixed(1)}s`,
+          notify: false
+        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, ...result, devices }));
+      })
+      .catch(err => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message || 'Scan failed' }));
+      });
     return;
   }
 

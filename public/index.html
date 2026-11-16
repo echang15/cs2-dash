@@ -416,6 +416,12 @@
           <button type="button" class="ctrl-btn active" id="btn-wled-add-device">+ ADD DEVICE</button>
         </div>
 
+        <div class="wled-discover-bar">
+          <button type="button" class="ctrl-btn" id="btn-wled-scan" title="Find WLED lights on your network (mDNS + subnet scan)">SCAN NETWORK</button>
+          <span class="wled-hint" id="wled-scan-status">Find WLED lights on your network automatically</span>
+        </div>
+        <div class="wled-discover-results" id="wled-discover-results" hidden></div>
+
         <div class="wled-devices-list" id="wled-devices-list"></div>
       </div>
 
@@ -438,8 +444,10 @@
     <div class="radar-floating-canvas" id="radar-floating-canvas"></div>
   </div>
 
+  <script src="/radar-calibration.js"></script>
   <script src="/radar-maps.js"></script>
   <script src="/weapon-skins-manifest.js"></script>
+  <script src="/weapon-skin-images.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

@@ -249,7 +249,91 @@ function findSkinnedSilhouette(weaponNameOrId, skinName) {
   return null;
 }
 
-function getWeaponSilhouetteHtml(weaponNameOrId, skinName) {
+// Dashboard weapon id -> CS2 weapon class (used when only the short id is known, e.g. the simulator)
+const WEAPON_ID_TO_CLASS = {
+  ak47: 'weapon_ak47', m4a4: 'weapon_m4a1', m4a1s: 'weapon_m4a1_silencer', awp: 'weapon_awp', ssg08: 'weapon_ssg08',
+  galil: 'weapon_galilar', famas: 'weapon_famas', aug: 'weapon_aug', sg553: 'weapon_sg556', mp9: 'weapon_mp9',
+  mac10: 'weapon_mac10', mp7: 'weapon_mp7', ump45: 'weapon_ump45', p90: 'weapon_p90', xm1014: 'weapon_xm1014',
+  nova: 'weapon_nova', deagle: 'weapon_deagle', usps: 'weapon_usp_silencer', glock: 'weapon_glock', p250: 'weapon_p250',
+  p2000: 'weapon_hkp2000', fiveseven: 'weapon_fiveseven', tec9: 'weapon_tec9', cz75: 'weapon_cz75a', revolver: 'weapon_revolver'
+};
+
+// Pistols and knives are tall for their length: their renders need a less aggressive crop than long guns
+const SHORT_WEAPON_IDS = new Set(['deagle', 'usps', 'glock', 'p250', 'p2000', 'fiveseven', 'tec9', 'cz75', 'revolver', 'knife', 'zeus']);
+
+// Knife display names that don't match their class names
+const KNIFE_DISPLAY_NAME_TO_CLASS = {
+  huntsman: 'weapon_knife_tactical', talon: 'weapon_knife_widowmaker', shadowdaggers: 'weapon_knife_push',
+  navaja: 'weapon_knife_gypsy_jackknife', nomad: 'weapon_knife_outdoor', survivalknife: 'weapon_knife_canis',
+  paracord: 'weapon_knife_cord', classicknife: 'weapon_knife_css', bowie: 'weapon_knife_survival_bowie'
+};
+
+// Skin photo links that failed to load (offline / blocked): those weapons fall back to the drawn silhouette
+const failedSkinPhotos = new Set();
+window.__skinPhotoFailed = (img) => {
+  failedSkinPhotos.add(img.getAttribute('src'));
+  const fallback = img.nextElementSibling;
+  img.remove();
+  if (fallback) fallback.hidden = false;
+};
+
+function resolveWeaponClass(weapon, weaponNameOrId) {
+  const images = window.WEAPON_SKIN_IMAGES;
+  if (!images) return null;
+  const raw = weapon && typeof weapon.weaponClass === 'string' ? weapon.weaponClass.toLowerCase() : '';
+  if (raw && images[raw]) return raw;
+  const id = resolveWeaponId(weaponNameOrId);
+  if (id !== 'knife') return WEAPON_ID_TO_CLASS[id] || null;
+  // Knife from a display name ("Karambit", "M9 Bayonet", "Butterfly Knife")
+  const name = String((weapon && weapon.name) || weaponNameOrId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Default knives ("CT Tactical Knife" / "Tactical Knife") — not the Huntsman, whose class is weapon_knife_tactical
+  if (!name || name === 'knife' || /^(ct)?(tactical|default|standard)?knife$/.test(name)) {
+    return name.startsWith('ct') ? 'weapon_knife' : 'weapon_knife_t';
+  }
+  const displayAlias = Object.entries(KNIFE_DISPLAY_NAME_TO_CLASS).find(([alias]) => name.includes(alias));
+  if (displayAlias && images[displayAlias[1]]) return displayAlias[1];
+  const knifeClasses = Object.keys(images).filter(c => c.startsWith('weapon_knife') || c === 'weapon_bayonet');
+  return knifeClasses
+    .map(c => ({ c, key: c.replace(/^weapon_(knife_)?/, '').replace(/_/g, '') }))
+    .filter(k => k.key && k.key !== 'knife' && k.key !== 't' && k.key !== 'tactical' && name.includes(k.key))
+    .sort((a, b) => b.key.length - a.key.length)[0]?.c || null;
+}
+
+// Real in-game render for this weapon + skin, as a Steam image link, or null
+function findSkinPhotoUrl(weapon, weaponNameOrId, skinName) {
+  const images = window.WEAPON_SKIN_IMAGES;
+  const prefix = window.WEAPON_SKIN_IMAGE_PREFIX;
+  if (!images || !prefix) return null;
+  const cls = resolveWeaponClass(weapon, weaponNameOrId);
+  const table = cls ? images[cls] : null;
+  if (!table) return null;
+
+  let entry = null;
+  const paintkit = weapon && typeof weapon.paintkit === 'string' ? weapon.paintkit.toLowerCase() : '';
+  if (paintkit && paintkit !== 'default') entry = table[paintkit] || null;
+  if (!entry) {
+    const wanted = normalizeSkinToken(skinName);
+    const isStock = !wanted || ['STANDARDISSUE', 'FACTORYISSUE', 'DEFAULT', 'STANDARD', 'VANILLA'].includes(wanted);
+    if (isStock) entry = table[''] || null; // stock render (base weapon or vanilla knife)
+    else entry = Object.values(table).find(([, label]) => normalizeSkinToken(label) === wanted) || null;
+  }
+  if (!entry) return null;
+  const url = entry[0].startsWith('https://') ? entry[0] : prefix + entry[0];
+  return failedSkinPhotos.has(url) ? null : url;
+}
+
+function getWeaponSilhouetteHtml(weaponNameOrId, skinName, weapon = null) {
+  const photoUrl = findSkinPhotoUrl(weapon, weaponNameOrId, skinName);
+  if (photoUrl) {
+    const fallback = getDrawnWeaponHtml(weaponNameOrId, skinName);
+    const shortId = resolveWeaponId(weaponNameOrId);
+    const isLongGun = !SHORT_WEAPON_IDS.has(shortId);
+    return `<img src="${photoUrl}" alt="${escapeHtml(String(weaponNameOrId))} ${escapeHtml(String(skinName || ''))}" class="weapon-skinned-silhouette weapon-skin-photo${isLongGun ? ' weapon-skin-photo--long' : ''}" referrerpolicy="no-referrer" decoding="async" onerror="window.__skinPhotoFailed(this)" /><span class="weapon-art-fallback" hidden>${fallback}</span>`;
+  }
+  return getDrawnWeaponHtml(weaponNameOrId, skinName);
+}
+
+function getDrawnWeaponHtml(weaponNameOrId, skinName) {
   const match = findSkinnedSilhouette(weaponNameOrId, skinName);
   if (match) {
     return `<img src="${match.path}" alt="${weaponNameOrId} ${match.label}" class="weapon-skinned-silhouette" loading="eager" decoding="async" />`;
@@ -341,6 +425,7 @@ const appState = {
   botTeamName: 'BOT SWARM (10)',
   targetSquadSize: 5,
   lastKillfeedSig: '',
+  lastBannerAlertTs: null,
   calloutText: 'STADIUM TELEMETRY LOCKED // 5 HUMANS VS 10 BOTS',
   calloutHighlight: false,
   customCallsigns: DEFAULT_CALLSIGNS.map(c => ({ ...c })),
@@ -1038,7 +1123,7 @@ function renderPlayersStage() {
       clipMax: 0,
       reserve: 0
     };
-    const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin);
+    const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin, weapon);
     const clipPct = weapon.clipMax > 0 ? Math.max(0, Math.min(100, (weapon.clip / weapon.clipMax) * 100)) : 100;
     const isLowAmmo = weapon.clipMax > 0 && weapon.clip <= Math.ceil(weapon.clipMax * 0.28);
 
@@ -1092,6 +1177,15 @@ function renderPlayersStage() {
 
     const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
     const playerRoundKills = Math.max(0, Number(p.roundKills) || 0);
+    const pipKills = Math.min(10, playerRoundKills);
+    const roundKillPipsHtml = `
+          <div class="round-kill-pips ${pipKills >= 5 ? 'is-ace' : pipKills >= 3 ? 'is-multi' : ''}" title="${playerRoundKills} kill${playerRoundKills === 1 ? '' : 's'} this round">
+            <span class="round-kill-pips-label">RND K</span>
+            <div class="round-kill-pips-track">
+              ${Array.from({ length: 10 }, (_, i) => `<span class="rk-pip ${i < pipKills ? 'filled' : ''}"></span>`).join('')}
+            </div>
+            <span class="round-kill-pips-count">${playerRoundKills}</span>
+          </div>`;
     const playerRoundDmg = Math.max(0, Math.round(Number(p.roundDamage) || 0));
     const roundKillSharePct = totalRoundBotKills > 0
       ? Math.min(100, Math.round((playerRoundKills / totalRoundBotKills) * 100))
@@ -1149,9 +1243,10 @@ function renderPlayersStage() {
             </div>
           </div>
         </div>
+        ${roundKillPipsHtml}
       </div>
 
-      <!-- ZONE 2: GIANT VITALS (HEALTH & ARMOR) -->
+      <!-- ZONE 2: GIANT VITALS (HEALTH, ARMOR & AMMO) -->
       <div class="card-zone-vitals">
         <div class="vitals-numbers-row">
           <div class="hp-primary-cluster">
@@ -1173,9 +1268,22 @@ function renderPlayersStage() {
           <div class="hp-bar-current ${hpStateClass}" style="width:${p.health}%"></div>
           <div class="hp-bar-segments-overlay"></div>
         </div>
+
+        <div class="ammo-telemetry-row">
+          <div class="ammo-counter-nums">
+            <span class="ammo-clip-big ${weapon.clip === 0 ? 'empty' : isLowAmmo ? 'low' : ''}">${weapon.clip}</span>
+            <span class="ammo-reserve-sub">/ ${weapon.reserve}</span>
+          </div>
+          <div class="magazine-bullet-track">
+            <div class="magazine-bullet-fill ${isLowAmmo ? 'low' : ''}" style="width:${clipPct}%"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- ZONE 3: PRIMARY WEAPON SILHOUETTE & AMMO TELEMETRY -->
+      <!-- PORTRAIT WINDOW: operator model shows through between vitals and loadout -->
+      <div class="card-zone-portrait" data-cycle-bg="${idx}" title="Click portrait background to cycle ${currentSide} Lobby Skin (${activeBgId}/11)"></div>
+
+      <!-- ZONE 3: PRIMARY WEAPON SILHOUETTE & SIDEARM -->
       <div class="card-zone-weapons">
         <div class="weapon-header-row">
           <div class="weapon-name-group">
@@ -1191,21 +1299,9 @@ function renderPlayersStage() {
           ${weaponSvg}
         </div>
 
-        <div class="ammo-telemetry-row">
-          <div class="ammo-counter-nums">
-            <span class="ammo-clip-big ${weapon.clip === 0 ? 'empty' : isLowAmmo ? 'low' : ''}">${weapon.clip}</span>
-            <span class="ammo-reserve-sub">/ ${weapon.reserve}</span>
-          </div>
-
-          <div class="ammo-bar-sidearm-col">
-            <div class="magazine-bullet-track">
-              <div class="magazine-bullet-fill ${isLowAmmo ? 'low' : ''}" style="width:${clipPct}%"></div>
-            </div>
-            <div class="sidearm-mini-row">
-              <span>SIDEARM: <strong class="sidearm-name">${sidearm.name}</strong></span>
-              <span>${sidearm.clip} / ${sidearm.reserve}</span>
-            </div>
-          </div>
+        <div class="sidearm-mini-row">
+          <span>SIDEARM: <strong class="sidearm-name">${sidearm.name}</strong></span>
+          <span>${sidearm.clip} / ${sidearm.reserve}</span>
         </div>
       </div>
 
@@ -1506,25 +1602,17 @@ function renderPlayerDetailView() {
     clipMax: 30,
     reserve: 90
   };
-  const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin);
+  const weaponSvg = getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin, weapon);
   const sidearm = p.secondaryWeapon || { id: 'deagle', name: 'Desert Eagle', skin: 'STANDARD', clip: 7, clipMax: 7, reserve: 35 };
-  const sidearmSvg = getWeaponSilhouetteHtml(sidearm.id || sidearm.name, sidearm.skin);
+  const sidearmSvg = getWeaponSilhouetteHtml(sidearm.id || sidearm.name, sidearm.skin, sidearm);
   const knife = p.knifeWeapon || { id: 'knife', name: currentSide === 'CT' ? 'CT Tactical Knife' : 'Tactical Knife', skin: 'STANDARD ISSUE', state: 'holstered' };
-  const knifeSvg = getWeaponSilhouetteHtml(knife.id || knife.name, knife.skin);
+  const knifeSvg = getWeaponSilhouetteHtml(knife.id || knife.name, knife.skin, knife);
   const hasZeus = Boolean(p.hasZeus);
 
   const flashedPct = Math.min(100, Math.round(((Number(p.flashed) || 0) / 255) * 100));
   const smokedPct = Math.min(100, Math.round(((Number(p.smoked) || 0) / 255) * 100));
   const burningPct = Math.min(100, Math.round(((Number(p.burning) || 0) / 255) * 100));
 
-  const kdRatio = (p.kills / Math.max(1, p.deaths)).toFixed(2);
-  const kpr = (p.kills / Math.max(1, appState.roundNumber)).toFixed(2);
-  const survivalPct = Math.max(18, Math.min(96, Math.round(((appState.roundNumber - p.deaths) / Math.max(1, appState.roundNumber)) * 100)));
-  const rating2 = (Number(kdRatio) * 0.48 + (p.adr / 100) * 0.44 + (p.hsPercent / 100) * 0.25).toFixed(2);
-  const totalDamage = typeof p.totalDamage === 'number' ? p.totalDamage : Math.round((p.adr || 0) * Math.max(1, appState.roundNumber));
-  const dmgPerKill = p.kills > 0 ? Math.round(totalDamage / p.kills) : totalDamage;
-  const mvps = typeof p.mvps === 'number' ? p.mvps : 0;
-  const matchScore = typeof p.score === 'number' ? p.score : (p.kills * 2 + p.assists);
   const activityState = (p.activity || 'playing').toUpperCase();
   const buyTier = p.equipValue >= 3800
     ? 'FULL BUY'
@@ -1595,8 +1683,12 @@ function renderPlayerDetailView() {
       val = Math.max(24, Math.min(420, Math.round(baseDmg + ((rNum * 37 + safeIdx * 53) % 140) - 55)));
       kills = Math.max(0, Math.min(5, Math.round(val / 105)));
     }
-    const pct = isFuture ? 0 : (val === 0 ? 4 : Math.max(10, Math.min(100, Math.round((val / 380) * 100))));
-    return { rNum, val, kills, pct, isCurrent, isFuture };
+    return { rNum, val, kills, isCurrent, isFuture };
+  });
+  // Scale bars to the best round in view (floor of 150 so a quiet stretch doesn't look maxed out)
+  const roundDmgScale = Math.max(150, ...roundHistory.map(r => r.val));
+  roundHistory.forEach(r => {
+    r.pct = r.isFuture ? 0 : (r.val === 0 ? 4 : Math.max(8, Math.min(100, Math.round((r.val / roundDmgScale) * 100))));
   });
 
   const roundBarsHtml = roundHistory.map(item => `
@@ -1687,7 +1779,7 @@ function renderPlayerDetailView() {
     : '';
 
   const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
-  const detailSig = `${soloActive}|${posSig}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${mvps}|${matchScore}|${p.adr}|${totalDamage}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
+  const detailSig = `${soloActive}|${posSig}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
   if (detailEl.dataset.detailSig === detailSig) return;
   detailEl.dataset.detailSig = detailSig;
 
@@ -1805,7 +1897,7 @@ function renderPlayerDetailView() {
                 <div class="pd-module-sub">SECONDARY SIDEARM</div>
                 <div style="font-family:var(--font-display); font-size:22px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sidearm.name} <span style="font-family:var(--font-mono); font-size:11px; color:var(--squad-accent);">// ${sidearm.skin || 'ISSUE'}</span></div>
               </div>
-              <div style="width:110px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${sidearmSvg}</div>
+              <div class="pd-sidearm-svg" style="width:110px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${sidearmSvg}</div>
               <div style="font-family:var(--font-mono); font-size:20px; font-weight:800; flex-shrink:0;">${sidearm.clip} <span style="font-size:12px; color:var(--text-secondary);">/ ${sidearm.reserve}</span></div>
             </div>
           </div>
@@ -1839,67 +1931,19 @@ function renderPlayerDetailView() {
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: PRO ANALYTICS MATRIX & ROUND DAMAGE CHART -->
+      <!-- RIGHT COLUMN: OPPOSITION THREAT MATRIX & ROUND DAMAGE CHART -->
       <div class="pd-column">
-        <div class="pd-module">
+        <div class="pd-module pd-threat-module">
           <div class="pd-module-header">
-            <span class="pd-module-title">PRO COMBAT TELEMETRY MATRIX</span>
-            <span class="pd-module-sub">HLTV-STYLE IMPACT RATING ${rating2}</span>
+            <span class="pd-module-title">OPPOSITION THREAT MATRIX</span>
+            <span class="pd-module-sub">${aliveBotsCount} / ${botsList.length || 10} ALIVE</span>
           </div>
-          <div class="${soloActive ? 'pd-stats-grid-12' : 'pd-stats-grid-8'}">
-            <div class="pd-stat-card accent">
-              <span class="pd-stat-label">KILLS</span>
-              <span class="pd-stat-val">${p.kills}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">DEATHS</span>
-              <span class="pd-stat-val">${p.deaths}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">ASSISTS</span>
-              <span class="pd-stat-val">${p.assists}</span>
-            </div>
-            <div class="pd-stat-card accent">
-              <span class="pd-stat-label">K/D RATIO</span>
-              <span class="pd-stat-val">${kdRatio}</span>
-            </div>
-            <div class="pd-stat-card accent">
-              <span class="pd-stat-label">ADR</span>
-              <span class="pd-stat-val">${p.adr}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">HEADSHOT %</span>
-              <span class="pd-stat-val">${p.hsPercent}%</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">KPR</span>
-              <span class="pd-stat-val">${kpr}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">SURVIVAL</span>
-              <span class="pd-stat-val">${survivalPct}%</span>
-            </div>
-            ${soloActive ? `
-            <div class="pd-stat-card accent">
-              <span class="pd-stat-label">MVPs</span>
-              <span class="pd-stat-val">${mvps}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">SCORE</span>
-              <span class="pd-stat-val">${matchScore}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">TOTAL DMG</span>
-              <span class="pd-stat-val">${totalDamage}</span>
-            </div>
-            <div class="pd-stat-card">
-              <span class="pd-stat-label">DMG / KILL</span>
-              <span class="pd-stat-val">${dmgPerKill}</span>
-            </div>` : ''}
+          <div class="pd-solo-bot-grid pd-threat-large">
+            ${botSwarmHtml}
           </div>
         </div>
 
-        <div class="pd-module fill-space">
+        <div class="pd-module fill-space pd-round-dmg-module">
           <div class="pd-module-header">
             <span class="pd-module-title">ROUND-BY-ROUND DAMAGE OUTPUT</span>
             <span class="pd-module-sub">CURRENT ROUND: ${p.roundDamage} DMG (${p.roundKills}K)</span>
@@ -1910,7 +1954,7 @@ function renderPlayerDetailView() {
         </div>
       </div>
 
-      <!-- 4TH COLUMN (ALWAYS-ON): LIVE RADAR, OPPOSITION THREAT MATRIX & ENGAGEMENT LOG -->
+      <!-- 4TH COLUMN (ALWAYS-ON): LIVE RADAR & ENGAGEMENT LOG -->
       <div class="pd-column">
         <div class="pd-module pd-solo-radar-module">
           <div class="pd-module-header">
@@ -1922,17 +1966,8 @@ function renderPlayerDetailView() {
           </div>
         </div>
 
-        <div class="pd-module">
-          <div class="pd-module-header">
-            <span class="pd-module-title">OPPOSITION THREAT MATRIX</span>
-            <span class="pd-module-sub">${aliveBotsCount} / ${botsList.length || 10} ALIVE</span>
-          </div>
-          <div class="pd-solo-bot-grid">
-            ${botSwarmHtml}
-          </div>
-        </div>
 
-        <div class="pd-module fill-space">
+        <div class="pd-module fill-space pd-log-module">
           <div class="pd-module-header">
             <span class="pd-module-title">${soloActive ? 'LIVE ENGAGEMENT LOG' : 'RECENT ENGAGEMENT LOG'}</span>
             <span class="pd-module-sub">${soloActive ? 'SOLO COMBAT FEED' : 'LIVE KILLFEED STREAM'}</span>
@@ -1975,6 +2010,13 @@ function renderFloatingRadar() {
     focusedIdx: getEffectiveViewMode() === 'player' ? appState.selectedPlayerIdx : -1,
     simTick: appState.simTick
   });
+}
+
+// .modal-backdrop is display:none unless it has .open; keep the hidden attribute in sync for state checks
+function setModalOpen(el, open) {
+  if (!el) return;
+  el.hidden = !open;
+  el.classList.toggle('open', open);
 }
 
 function renderAll() {
@@ -2638,8 +2680,11 @@ function applyServerGsiState(serverState) {
     appState.bots = serverState.bots.slice(0, 10);
   }
 
-  if (serverState.bannerAlert && serverState.bannerAlert.title) {
-    appState.calloutText = serverState.bannerAlert.title;
+  // Show a server banner once when it first appears, so later kill callouts aren't overwritten every packet
+  const banner = serverState.bannerAlert;
+  if (banner && banner.title && banner.timestamp !== appState.lastBannerAlertTs) {
+    appState.lastBannerAlertTs = banner.timestamp;
+    appState.calloutText = banner.title;
     appState.calloutHighlight = true;
   }
 
@@ -3547,7 +3592,7 @@ function bindControls() {
 
   if (btnOpenTrends && trendsModal) {
     btnOpenTrends.addEventListener('click', () => {
-      trendsModal.hidden = false;
+      setModalOpen(trendsModal, true);
       const defaultPlayer = (appState.players.length === 1 && appState.players[0])
         ? (appState.players[0].id || appState.players[0].name || 'all')
         : 'all';
@@ -3557,14 +3602,14 @@ function bindControls() {
 
   if (btnCloseTrends && trendsModal) {
     btnCloseTrends.addEventListener('click', () => {
-      trendsModal.hidden = true;
+      setModalOpen(trendsModal, false);
     });
   }
 
   if (trendsModal) {
     trendsModal.addEventListener('click', (e) => {
       if (e.target === trendsModal) {
-        trendsModal.hidden = true;
+        setModalOpen(trendsModal, false);
       }
     });
   }
@@ -3805,6 +3850,8 @@ connectSse();
 const wledUiState = {
   config: null,
   statuses: {},
+  discovered: [],
+  scanning: false,
   effectsCatalog: [],
   eventMetadata: {}
 };
@@ -3856,9 +3903,90 @@ async function saveWledConfig({ silent = false } = {}) {
   } catch (_) {}
 }
 
+// Device names/hosts come from the network (WLED /json/info), so escape before injecting into HTML
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function isWledHostConfigured(host) {
+  const key = String(host || '').toLowerCase();
+  return Boolean(wledUiState.config && wledUiState.config.devices.some(d => String(d.host).toLowerCase() === key));
+}
+
+// Shared by manual "+ ADD DEVICE" and network-scan "ADD": saves the device, then pings/identifies it
+async function addWledDevice({ name, host, segmentId = 0 }) {
+  if (!wledUiState.config || !host) return;
+  const newId = `wled-${Date.now()}`;
+  wledUiState.config.devices.push({ id: newId, name: name || host, host, enabled: true, segmentId });
+  await saveWledConfig({ silent: true });
+  renderWledModal();
+  const pingRes = await fetch('/api/wled/test-device', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ host, deviceId: newId, identify: true })
+  }).then(r => r.json()).catch(() => null);
+  if (pingRes && pingRes.status) {
+    wledUiState.statuses[newId] = pingRes.status;
+    renderWledModal();
+  }
+}
+
+async function scanForWledDevices() {
+  if (wledUiState.scanning) return;
+  const btn = document.getElementById('btn-wled-scan');
+  const statusEl = document.getElementById('wled-scan-status');
+  wledUiState.scanning = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'SCANNING...'; }
+  if (statusEl) statusEl.textContent = 'Listening for WLED lights and checking your network (~5s)...';
+  try {
+    const res = await fetch('/api/wled/discover').then(r => r.json());
+    if (!res || !res.ok) throw new Error((res && res.error) || 'Scan failed');
+    wledUiState.discovered = res.devices || [];
+    const nets = (res.subnets || []).map(s => `${s}.x`).join(', ');
+    if (statusEl) {
+      statusEl.textContent = `Found ${wledUiState.discovered.length} WLED device${wledUiState.discovered.length === 1 ? '' : 's'} in ${(res.durationMs / 1000).toFixed(1)}s${nets ? ` (scanned ${nets})` : ''}`;
+    }
+  } catch (err) {
+    wledUiState.discovered = [];
+    if (statusEl) statusEl.textContent = `Scan failed: ${err.message}`;
+  } finally {
+    wledUiState.scanning = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'SCAN NETWORK'; }
+    renderWledDiscoverResults();
+  }
+}
+
+function renderWledDiscoverResults() {
+  const el = document.getElementById('wled-discover-results');
+  if (!el) return;
+  const list = wledUiState.discovered || [];
+  el.hidden = list.length === 0;
+  el.innerHTML = list.map(d => {
+    const added = isWledHostConfigured(d.host);
+    const meta = [d.ledCount ? `${d.ledCount} LEDs` : null, d.ver ? `v${d.ver}` : null, (d.sources || []).join('+').toUpperCase()].filter(Boolean).join(' • ');
+    return `
+      <div class="wled-device-row wled-discover-row ${added ? 'is-added' : ''}">
+        <div class="wled-device-info">
+          <span class="wled-status-dot online"></span>
+          <span class="wled-device-name">${escapeHtml(d.name)}</span>
+          <span class="wled-device-host">${escapeHtml(d.host)}</span>
+          <span class="wled-device-meta">${escapeHtml(meta)}</span>
+        </div>
+        <div class="wled-device-actions">
+          <button type="button" class="ctrl-btn mini-btn wled-disc-identify" data-disc-host="${escapeHtml(d.host)}">IDENTIFY</button>
+          ${added
+            ? '<span class="wled-discover-added">ADDED</span>'
+            : `<button type="button" class="ctrl-btn mini-btn active wled-disc-add" data-disc-host="${escapeHtml(d.host)}">+ ADD</button>`}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderWledModal() {
   const cfg = wledUiState.config;
   if (!cfg) return;
+  renderWledDiscoverResults();
 
   const masterBtn = document.getElementById('btn-wled-master-toggle');
   if (masterBtn) {
@@ -3918,6 +4046,23 @@ function renderWledModal() {
     const effectOpts = (selectedFx) => wledUiState.effectsCatalog.map(fx =>
       `<option value="${fx.id}" ${Number(selectedFx) === fx.id ? 'selected' : ''}>${fx.id}: ${escapeHtml(fx.name)}</option>`
     ).join('');
+
+    const lightChips = (key, evt) => {
+      const picked = new Set(Array.isArray(evt.deviceIds) ? evt.deviceIds : []);
+      const allOn = picked.size === 0;
+      const chips = cfg.devices.map(dev => `
+        <button type="button" class="wled-light-chip ${picked.has(dev.id) ? 'is-on' : ''} ${dev.enabled ? '' : 'is-disabled'}"
+          data-event-key="${key}" data-device-id="${escapeHtml(dev.id)}"
+          title="${dev.enabled ? escapeHtml(dev.host) : 'Light is turned off in the device list'}">${escapeHtml(dev.name)}</button>
+      `).join('');
+      return `
+        <div class="wled-event-lights">
+          <span class="wled-event-lights-label">LIGHTS</span>
+          <button type="button" class="wled-light-chip wled-light-chip-all ${allOn ? 'is-on' : ''}" data-event-key="${key}" data-device-id="">ALL</button>
+          ${cfg.devices.length ? chips : '<span class="wled-event-lights-empty">Add lights above to target them individually</span>'}
+        </div>
+      `;
+    };
 
     eventsList.innerHTML = Object.entries(cfg.events).map(([key, evt]) => {
       const meta = wledUiState.eventMetadata[key] || { label: key.toUpperCase(), description: '' };
@@ -3987,6 +4132,7 @@ function renderWledModal() {
           <div>
             <button type="button" class="ctrl-btn mini-btn wled-evt-test" data-event-key="${key}">TEST</button>
           </div>
+          ${lightChips(key, evt)}
         </div>
       `;
     }).join('');
@@ -4002,21 +4148,21 @@ function initWledController() {
 
   if (openBtn && modalEl) {
     openBtn.addEventListener('click', () => {
-      modalEl.hidden = false;
+      setModalOpen(modalEl, true);
       fetchWledConfig();
     });
   }
   if (closeBtn && modalEl) {
     closeBtn.addEventListener('click', () => {
-      modalEl.hidden = true;
+      setModalOpen(modalEl, false);
     });
   }
   if (modalEl) {
     modalEl.addEventListener('click', (e) => {
-      if (e.target === modalEl) modalEl.hidden = true;
+      if (e.target === modalEl) setModalOpen(modalEl, false);
     });
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modalEl.hidden) modalEl.hidden = true;
+      if (e.key === 'Escape' && !modalEl.hidden) setModalOpen(modalEl, false);
     });
   }
 
@@ -4058,26 +4204,30 @@ function initWledController() {
     const segInput = document.getElementById('wled-new-seg');
     const host = (hostInput?.value || '').trim();
     if (!host) return;
-    const newId = `wled-${Date.now()}`;
-    wledUiState.config.devices.push({
-      id: newId,
-      name: (nameInput?.value || '').trim() || host,
-      host,
-      enabled: true,
-      segmentId: Number(segInput?.value ?? 0)
-    });
+    const name = (nameInput?.value || '').trim() || host;
     if (nameInput) nameInput.value = '';
     if (hostInput) hostInput.value = '';
-    await saveWledConfig({ silent: true });
-    // Auto-ping newly added device
-    const pingRes = await fetch('/api/wled/test-device', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ host, deviceId: newId, identify: true })
-    }).then(r => r.json()).catch(() => null);
-    if (pingRes && pingRes.status) {
-      wledUiState.statuses[newId] = pingRes.status;
-      renderWledModal();
+    await addWledDevice({ name, host, segmentId: Number(segInput?.value ?? 0) });
+  });
+
+  document.getElementById('btn-wled-scan')?.addEventListener('click', scanForWledDevices);
+
+  document.getElementById('wled-discover-results')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-disc-host]');
+    if (!btn || !wledUiState.config) return;
+    const host = btn.getAttribute('data-disc-host');
+    const found = wledUiState.discovered.find(d => d.host === host);
+    if (!found) return;
+    if (btn.classList.contains('wled-disc-add')) {
+      if (isWledHostConfigured(host)) return;
+      btn.disabled = true;
+      await addWledDevice({ name: found.name, host, segmentId: 0 });
+    } else if (btn.classList.contains('wled-disc-identify')) {
+      fetch('/api/wled/test-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, identify: true })
+      }).catch(() => {});
     }
   });
 
@@ -4141,6 +4291,20 @@ function initWledController() {
 
   eventsListEl?.addEventListener('click', async (e) => {
     const t = e.target;
+    const chip = t.closest('.wled-light-chip');
+    if (chip) {
+      const key = chip.getAttribute('data-event-key');
+      const evt = wledUiState.config?.events?.[key];
+      if (!evt) return;
+      const devId = chip.getAttribute('data-device-id');
+      const picked = new Set(Array.isArray(evt.deviceIds) ? evt.deviceIds : []);
+      if (!devId) picked.clear(); // ALL
+      else if (picked.has(devId)) picked.delete(devId);
+      else picked.add(devId);
+      evt.deviceIds = Array.from(picked);
+      renderWledModal();
+      return;
+    }
     if (!t.classList.contains('wled-evt-test')) return;
     const key = t.getAttribute('data-event-key');
     if (!key) return;

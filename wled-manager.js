@@ -93,8 +93,9 @@ class WledManager {
     this.config = createDefaultConfig();
     this.deviceStatuses = new Map();
     this.snapshotByDevice = new Map();
-    this.restoreTimer = null;
+    this.restoreTimers = new Map(); // deviceId -> timeout for the transient effect running on that light
     this.activeBombState = null;
+    this.bombDeviceIds = new Set(); // lights currently owned by the continuous bomb effect
     this.bombPlantedAt = null;
     this.bombWatcherTimer = null;
     this.lastEventAt = {};
@@ -138,9 +139,13 @@ class WledManager {
           .filter(d => d.host.length > 0)
       : [];
 
+    const deviceIdSet = new Set(devices.map(d => d.id));
     const events = {};
     for (const [key, defEvt] of Object.entries(defaults.events)) {
       const inc = (input.events && input.events[key]) || {};
+      const deviceIds = Array.isArray(inc.deviceIds)
+        ? Array.from(new Set(inc.deviceIds.map(String))).filter(id => deviceIdSet.has(id))
+        : [];
       events[key] = {
         enabled: typeof inc.enabled === 'boolean' ? inc.enabled : defEvt.enabled,
         mode: ['effect', 'preset', 'restore'].includes(inc.mode) ? inc.mode : defEvt.mode,
@@ -151,7 +156,8 @@ class WledManager {
         sx: clampInt(inc.sx, 0, 255, defEvt.sx),
         ix: clampInt(inc.ix, 0, 255, defEvt.ix),
         bri: clampInt(inc.bri, 1, 255, defEvt.bri),
-        durationMs: clampInt(inc.durationMs, 0, 60000, defEvt.durationMs)
+        durationMs: clampInt(inc.durationMs, 0, 60000, defEvt.durationMs),
+        deviceIds // [] = all enabled lights
       };
     }
 
@@ -189,7 +195,8 @@ class WledManager {
       statuses,
       effectsCatalog: WLED_EFFECTS_CATALOG,
       eventMetadata: EVENT_METADATA,
-      activeBombState: this.activeBombState
+      activeBombState: this.activeBombState,
+      bombDeviceIds: Array.from(this.bombDeviceIds)
     };
   }
 
@@ -355,22 +362,37 @@ class WledManager {
     };
   }
 
+  // Enabled lights an event goes to: its picked lights, or all of them when none are picked
+  resolveEventDevices(evtCfg) {
+    const enabled = this.config.devices.filter(d => d.enabled);
+    const ids = Array.isArray(evtCfg.deviceIds) ? evtCfg.deviceIds : [];
+    if (ids.length === 0) return enabled;
+    const wanted = new Set(ids);
+    return enabled.filter(d => wanted.has(d.id));
+  }
+
+  clearRestoreTimer(deviceId) {
+    const t = this.restoreTimers.get(deviceId);
+    if (t) clearTimeout(t);
+    this.restoreTimers.delete(deviceId);
+  }
+
   async restoreIdle(devices = null) {
-    if (this.restoreTimer) {
-      clearTimeout(this.restoreTimer);
-      this.restoreTimer = null;
-    }
-
+    const fullRestore = !devices;
     const targetDevices = devices || this.config.devices.filter(d => d.enabled);
-    if (targetDevices.length === 0) {
-      this.snapshotByDevice.clear();
-      return;
+    if (fullRestore) {
+      for (const t of this.restoreTimers.values()) clearTimeout(t);
+      this.restoreTimers.clear();
+    } else {
+      targetDevices.forEach(d => this.clearRestoreTimer(d.id));
     }
 
-    if (this.config.restoreMode === 'none') {
-      this.snapshotByDevice.clear();
-      return;
-    }
+    // Take the saved looks and drop them up front, so an event that lands mid-restore saves a fresh one
+    const snaps = new Map(targetDevices.map(d => [d.id, this.snapshotByDevice.get(d.id)]));
+    if (fullRestore) this.snapshotByDevice.clear();
+    else targetDevices.forEach(d => this.snapshotByDevice.delete(d.id));
+
+    if (targetDevices.length === 0 || this.config.restoreMode === 'none') return;
 
     if (this.config.restoreMode === 'preset') {
       await Promise.allSettled(
@@ -378,14 +400,13 @@ class WledManager {
           this.sendStateToHost(dev.host, { on: true, ps: this.config.idlePresetId }, dev.id)
         )
       );
-      this.snapshotByDevice.clear();
       return;
     }
 
     // Default: 'snapshot'
     await Promise.allSettled(
       targetDevices.map(async (dev) => {
-        const snap = this.snapshotByDevice.get(dev.id);
+        const snap = snaps.get(dev.id);
         if (!snap) return;
         const restorePayload = snap.ps > 0
           ? { on: snap.on, bri: snap.bri, ps: snap.ps }
@@ -393,7 +414,35 @@ class WledManager {
         await this.sendStateToHost(dev.host, restorePayload, dev.id);
       })
     );
-    this.snapshotByDevice.clear();
+  }
+
+  // Lights leaving the bomb layer go back to idle, unless a transient effect is still
+  // running on them (that effect's timer restores them when it ends).
+  releaseBombDevices(deviceIds) {
+    const toRestore = this.config.devices.filter(d =>
+      deviceIds.includes(d.id) && !this.restoreTimers.has(d.id)
+    );
+    if (toRestore.length > 0) this.restoreIdle(toRestore).catch(() => {});
+  }
+
+  // Ends the bomb layer; `keepIds` are lights the caller is about to repaint anyway
+  clearBombLayer(keepIds = []) {
+    const released = Array.from(this.bombDeviceIds).filter(id => !keepIds.includes(id));
+    this.activeBombState = null;
+    this.bombDeviceIds = new Set();
+    this.releaseBombDevices(released);
+  }
+
+  // Called when a transient effect ends on one light
+  onDeviceEffectEnded(dev) {
+    this.restoreTimers.delete(dev.id);
+    const current = this.config.devices.find(d => d.id === dev.id) || dev;
+    const bombCfg = this.activeBombState ? this.config.events[this.activeBombState] : null;
+    if (bombCfg && bombCfg.enabled && this.bombDeviceIds.has(dev.id) && current.enabled) {
+      this.sendStateToHost(current.host, this.buildEventPayload(bombCfg, current), current.id).catch(() => {});
+    } else {
+      this.restoreIdle([current]).catch(() => {});
+    }
   }
 
   async triggerEvent(eventKey, { force = false, deviceId = null } = {}) {
@@ -404,11 +453,12 @@ class WledManager {
 
     const targetDevices = deviceId
       ? this.config.devices.filter(d => d.id === deviceId)
-      : this.config.devices.filter(d => d.enabled);
+      : this.resolveEventDevices(evtCfg);
 
     if (targetDevices.length === 0) {
       return { ok: false, reason: 'no_devices' };
     }
+    const targetIds = targetDevices.map(d => d.id);
 
     // Prevent rapid duplicate triggers of the same event within 250ms (unless forced)
     const now = Date.now();
@@ -418,25 +468,27 @@ class WledManager {
     this.lastEventAt[eventKey] = now;
 
     if (evtCfg.mode === 'restore') {
-      this.activeBombState = null;
+      targetIds.forEach(id => this.bombDeviceIds.delete(id));
+      if (this.bombDeviceIds.size === 0) this.activeBombState = null;
       await this.restoreIdle(targetDevices);
       return { ok: true, eventKey, devicesTriggered: targetDevices.length };
     }
 
-    if (this.restoreTimer) {
-      clearTimeout(this.restoreTimer);
-      this.restoreTimer = null;
-    }
+    targetIds.forEach(id => this.clearRestoreTimer(id));
 
-    if (this.config.restoreMode === 'snapshot' && this.snapshotByDevice.size === 0) {
-      await this.captureSnapshot(targetDevices);
+    if (this.config.restoreMode === 'snapshot') {
+      await this.captureSnapshot(targetDevices); // skips lights that already have one
     }
 
     const isBombContinuous = (eventKey === 'bomb_planted' || eventKey === 'bomb_critical') && evtCfg.durationMs === 0;
+    const endsBomb = ['bomb_defused', 'bomb_exploded', 'round_win', 'round_loss', 'round_start', 'gameover'].includes(eventKey);
     if (isBombContinuous) {
+      const released = Array.from(this.bombDeviceIds).filter(id => !targetIds.includes(id));
       this.activeBombState = eventKey;
-    } else if (eventKey === 'bomb_defused' || eventKey === 'bomb_exploded' || eventKey === 'round_win' || eventKey === 'round_loss' || eventKey === 'round_start' || eventKey === 'gameover') {
-      this.activeBombState = null;
+      this.bombDeviceIds = new Set(targetIds);
+      this.releaseBombDevices(released);
+    } else if (endsBomb && this.activeBombState) {
+      this.clearBombLayer(targetIds);
     }
 
     const results = await Promise.allSettled(
@@ -446,14 +498,10 @@ class WledManager {
     const successCount = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
 
     if (evtCfg.durationMs > 0) {
-      this.restoreTimer = setTimeout(() => {
-        this.restoreTimer = null;
-        if (this.activeBombState && this.config.events[this.activeBombState]?.enabled) {
-          this.triggerEvent(this.activeBombState, { force: true }).catch(() => {});
-        } else {
-          this.restoreIdle(targetDevices).catch(() => {});
-        }
-      }, evtCfg.durationMs);
+      targetDevices.forEach(dev => {
+        this.clearRestoreTimer(dev.id);
+        this.restoreTimers.set(dev.id, setTimeout(() => this.onDeviceEffectEnded(dev), evtCfg.durationMs));
+      });
     }
 
     return { ok: true, eventKey, devicesTriggered: successCount, totalTargets: targetDevices.length };
@@ -480,23 +528,12 @@ class WledManager {
   onBombCleared(outcome = null) {
     this.bombPlantedAt = null;
     this.stopBombWatcher();
-    if (outcome === 'defused') {
-      if (this.config.events.bomb_defused?.enabled) {
-        this.triggerEvent('bomb_defused').catch(() => {});
-      } else if (this.activeBombState) {
-        this.activeBombState = null;
-        this.restoreIdle().catch(() => {});
-      }
-    } else if (outcome === 'exploded') {
-      if (this.config.events.bomb_exploded?.enabled) {
-        this.triggerEvent('bomb_exploded').catch(() => {});
-      } else if (this.activeBombState) {
-        this.activeBombState = null;
-        this.restoreIdle().catch(() => {});
-      }
+    const outcomeEvent = outcome === 'defused' ? 'bomb_defused' : outcome === 'exploded' ? 'bomb_exploded' : null;
+    if (outcomeEvent && this.config.events[outcomeEvent]?.enabled) {
+      // The outcome event clears the bomb layer itself (restoring any bomb lights it doesn't cover)
+      this.triggerEvent(outcomeEvent).catch(() => {});
     } else if (this.activeBombState) {
-      this.activeBombState = null;
-      this.restoreIdle().catch(() => {});
+      this.clearBombLayer();
     }
   }
 

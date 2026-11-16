@@ -2,230 +2,54 @@
    CS2 LIVE TACTICAL RADAR / MINIMAP CALIBRATION & VECTOR BLUEPRINTS
    ========================================================================== */
 (function () {
-  const CS2_RADAR_MAPS = {
-    de_mirage: {
-      label: 'DE_MIRAGE',
-      pos_x: -3230,
-      pos_y: 1713,
-      scale: 5.0,
-      sites: [
-        { label: 'A', x: 58, y: 74, kind: 'site' },
-        { label: 'B', x: 24, y: 27, kind: 'site' },
-        { label: 'MID', x: 52, y: 48, kind: 'callout' },
-        { label: 'CT', x: 28, y: 76, kind: 'spawn' },
-        { label: 'T', x: 84, y: 36, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M18 16H42V38H32V68H68V86H18V64H26V38H18V16Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <path d="M42 26H78V48H62V68H48V50H36V38H42V26Z" fill="rgba(255,255,255,0.04)" stroke="rgba(148,163,184,0.3)" stroke-width="1.1"/>
-        <rect x="52" y="66" width="16" height="16" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="18" y="20" width="15" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_dust2: {
-      label: 'DE_DUST2',
-      pos_x: -2476,
-      pos_y: 3239,
-      scale: 4.4,
-      sites: [
-        { label: 'A', x: 75, y: 24, kind: 'site' },
-        { label: 'B', x: 20, y: 24, kind: 'site' },
-        { label: 'MID', x: 47, y: 48, kind: 'callout' },
-        { label: 'CT', x: 52, y: 20, kind: 'spawn' },
-        { label: 'T', x: 46, y: 84, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M14 16H30V58H42V86H58V58H70V16H86V68H66V88H34V68H14V16Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <path d="M36 16H64V44H54V62H42V44H36V16Z" fill="rgba(255,255,255,0.04)" stroke="rgba(148,163,184,0.3)" stroke-width="1.1"/>
-        <rect x="68" y="16" width="16" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="14" y="16" width="15" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_inferno: {
-      label: 'DE_INFERNO',
-      pos_x: -2087,
-      pos_y: 3870,
-      scale: 4.9,
-      sites: [
-        { label: 'A', x: 74, y: 66, kind: 'site' },
-        { label: 'B', x: 44, y: 26, kind: 'site' },
-        { label: 'MID', x: 48, y: 58, kind: 'callout' },
-        { label: 'CT', x: 78, y: 30, kind: 'spawn' },
-        { label: 'T', x: 16, y: 66, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M14 54H48V38H34V18H56V36H86V76H58V64H14V54Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <path d="M38 58H62V82H46V70H38V58Z" fill="rgba(255,255,255,0.04)" stroke="rgba(148,163,184,0.3)" stroke-width="1.1"/>
-        <rect x="66" y="58" width="16" height="16" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="36" y="18" width="16" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_nuke: {
-      label: 'DE_NUKE',
-      pos_x: -3453,
-      pos_y: 2887,
-      scale: 7.0,
-      sites: [
-        { label: 'A', x: 56, y: 50, kind: 'site' },
-        { label: 'B', x: 56, y: 62, kind: 'site' },
-        { label: 'OUT', x: 52, y: 78, kind: 'callout' },
-        { label: 'CT', x: 78, y: 50, kind: 'spawn' },
-        { label: 'T', x: 20, y: 52, kind: 'spawn' }
-      ],
-      geometry: `
-        <rect x="34" y="26" width="38" height="44" rx="4" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <path d="M16 44H34V58H16V44ZM72 42H86V58H72V42ZM34 70H70V84H34V70Z" fill="rgba(255,255,255,0.04)" stroke="rgba(148,163,184,0.3)" stroke-width="1.1"/>
-        <rect x="48" y="42" width="16" height="14" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_overpass: {
-      label: 'DE_OVERPASS',
-      pos_x: -4831,
-      pos_y: 1781,
-      scale: 5.2,
-      sites: [
-        { label: 'A', x: 50, y: 24, kind: 'site' },
-        { label: 'B', x: 64, y: 42, kind: 'site' },
-        { label: 'MID', x: 42, y: 54, kind: 'callout' },
-        { label: 'CT', x: 52, y: 16, kind: 'spawn' },
-        { label: 'T', x: 46, y: 84, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M32 14H66V48H74V62H56V86H38V62H26V36H32V14Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="42" y="16" width="16" height="14" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="56" y="34" width="15" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_vertigo: {
-      label: 'DE_VERTIGO',
-      pos_x: -3168,
-      pos_y: 1762,
-      scale: 4.0,
-      sites: [
-        { label: 'A', x: 74, y: 56, kind: 'site' },
-        { label: 'B', x: 26, y: 28, kind: 'site' },
-        { label: 'MID', x: 48, y: 44, kind: 'callout' },
-        { label: 'CT', x: 50, y: 22, kind: 'spawn' },
-        { label: 'T', x: 44, y: 82, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M18 20H62V44H82V72H58V84H34V62H18V20Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="66" y="48" width="15" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="20" y="22" width="15" height="14" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_ancient: {
-      label: 'DE_ANCIENT',
-      pos_x: -2953,
-      pos_y: 2164,
-      scale: 5.0,
-      sites: [
-        { label: 'A', x: 26, y: 32, kind: 'site' },
-        { label: 'B', x: 74, y: 36, kind: 'site' },
-        { label: 'MID', x: 50, y: 50, kind: 'callout' },
-        { label: 'CT', x: 50, y: 18, kind: 'spawn' },
-        { label: 'T', x: 50, y: 84, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M18 24H82V60H64V84H36V60H18V24Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="18" y="24" width="16" height="16" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="66" y="28" width="16" height="16" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_anubis: {
-      label: 'DE_ANUBIS',
-      pos_x: -2796,
-      pos_y: 3328,
-      scale: 5.22,
-      sites: [
-        { label: 'A', x: 72, y: 30, kind: 'site' },
-        { label: 'B', x: 28, y: 36, kind: 'site' },
-        { label: 'MID', x: 50, y: 52, kind: 'callout' },
-        { label: 'CT', x: 50, y: 18, kind: 'spawn' },
-        { label: 'T', x: 50, y: 84, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M20 20H80V58H64V84H36V58H20V20Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="64" y="22" width="16" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="20" y="28" width="16" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    de_train: {
-      label: 'DE_TRAIN',
-      pos_x: -2477,
-      pos_y: 2392,
-      scale: 4.7,
-      sites: [
-        { label: 'A', x: 58, y: 42, kind: 'site' },
-        { label: 'B', x: 52, y: 74, kind: 'site' },
-        { label: 'CT', x: 80, y: 66, kind: 'spawn' },
-        { label: 'T', x: 18, y: 34, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M14 26H76V56H86V78H36V62H14V26Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="50" y="34" width="16" height="15" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-        <rect x="44" y="66" width="16" height="14" rx="2" fill="rgba(250,204,21,0.09)" stroke="rgba(250,204,21,0.45)" stroke-dasharray="2 2"/>
-      `
-    },
-    cs_office: {
-      label: 'CS_OFFICE',
-      pos_x: -1838,
-      pos_y: 1858,
-      scale: 4.1,
-      sites: [
-        { label: 'HOSTAGES', x: 74, y: 30, kind: 'site' },
-        { label: 'HALL', x: 48, y: 48, kind: 'callout' },
-        { label: 'CT', x: 20, y: 72, kind: 'spawn' },
-        { label: 'T', x: 78, y: 26, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M16 56H42V22H84V56H60V78H16V56Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="64" y="22" width="18" height="16" rx="2" fill="rgba(56,189,248,0.12)" stroke="rgba(56,189,248,0.5)" stroke-dasharray="2 2"/>
-      `
-    },
-    cs_italy: {
-      label: 'CS_ITALY',
-      pos_x: -2647,
-      pos_y: 2592,
-      scale: 4.6,
-      sites: [
-        { label: 'HOSTAGES', x: 52, y: 26, kind: 'site' },
-        { label: 'MARKET', x: 48, y: 52, kind: 'callout' },
-        { label: 'CT', x: 48, y: 82, kind: 'spawn' },
-        { label: 'T', x: 52, y: 20, kind: 'spawn' }
-      ],
-      geometry: `
-        <path d="M26 16H74V60H62V84H38V60H26V16Z" fill="rgba(56,189,248,0.06)" stroke="rgba(148,163,184,0.35)" stroke-width="1.2"/>
-        <rect x="42" y="18" width="18" height="16" rx="2" fill="rgba(56,189,248,0.12)" stroke="rgba(56,189,248,0.5)" stroke-dasharray="2 2"/>
-      `
-    }
+  // Calibration + images are generated from the CS2 nav meshes (see public/radar-calibration.js, public/radar/*.svg).
+  const CALIBRATION = window.CS2_RADAR_CALIBRATION || {};
+  const ALIASES = window.CS2_RADAR_ALIASES || {};
+
+  // Fallback anchors for simulated patrols when no real positions arrive (percent of the radar frame)
+  const SIM_ANCHORS = {
+    A: { x: 70, y: 32 },
+    B: { x: 30, y: 32 },
+    MID: { x: 50, y: 50 },
+    CT: { x: 50, y: 22 },
+    T: { x: 50, y: 80 }
   };
 
+  // Resolves "de_mirage", "workshop/123/de_mirage", "de_ancient_night", "Mirage" to a calibrated map key
+  function resolveMapKey(mapName) {
+    let key = String(mapName || '').toLowerCase().trim();
+    key = key.split('/').pop();
+    if (ALIASES[key]) key = ALIASES[key];
+    if (CALIBRATION[key]) return key;
+    const bare = key.replace(/^(de|cs|ar)_/, '');
+    if (!bare) return null;
+    const match = Object.keys(CALIBRATION).find(k => k.replace(/^(de|cs|ar)_/, '') === bare)
+      || Object.keys(CALIBRATION).find(k => bare.includes(k.replace(/^(de|cs|ar)_/, '')));
+    return match || null;
+  }
+
   function getRadarMapMeta(mapName) {
-    const key = String(mapName || 'de_mirage').toLowerCase().trim();
-    if (CS2_RADAR_MAPS[key]) return CS2_RADAR_MAPS[key];
-    for (const [k, meta] of Object.entries(CS2_RADAR_MAPS)) {
-      if (key.includes(k.replace('de_', '').replace('cs_', ''))) {
-        return meta;
-      }
+    const key = resolveMapKey(mapName);
+    if (key) {
+      const cal = CALIBRATION[key];
+      return {
+        key,
+        label: key.toUpperCase(),
+        pos_x: cal.pos_x,
+        pos_y: cal.pos_y,
+        scale: cal.scale,
+        lowerMaxZ: typeof cal.lowerMaxZ === 'number' ? cal.lowerMaxZ : null,
+        image: `/radar/${key}.svg`
+      };
     }
     return {
+      key: null,
       label: String(mapName || 'TACTICAL SECTOR').toUpperCase(),
       pos_x: -2800,
       pos_y: 2600,
       scale: 5.0,
-      sites: [
-        { label: 'A', x: 72, y: 30, kind: 'site' },
-        { label: 'B', x: 28, y: 30, kind: 'site' },
-        { label: 'MID', x: 50, y: 52, kind: 'callout' },
-        { label: 'CT', x: 30, y: 78, kind: 'spawn' },
-        { label: 'T', x: 70, y: 78, kind: 'spawn' }
-      ],
-      geometry: `
-        <rect x="14" y="16" width="72" height="68" rx="4" fill="rgba(56,189,248,0.05)" stroke="rgba(148,163,184,0.3)" stroke-width="1.2"/>
-        <line x1="50" y1="16" x2="50" y2="84" stroke="rgba(148,163,184,0.2)" stroke-dasharray="2 2"/>
-        <line x1="14" y1="50" x2="86" y2="50" stroke="rgba(148,163,184,0.2)" stroke-dasharray="2 2"/>
-      `
+      lowerMaxZ: null,
+      image: null
     };
   }
 
@@ -235,8 +59,10 @@
     const u = ((pos.x - meta.pos_x) / meta.scale) / 1024 * 100;
     const v = ((meta.pos_y - pos.y) / meta.scale) / 1024 * 100;
     return {
-      x: Math.max(5, Math.min(95, u)),
-      y: Math.max(5, Math.min(95, v))
+      x: Math.max(1, Math.min(99, u)),
+      y: Math.max(1, Math.min(99, v)),
+      // Stacked maps (Nuke, Vertigo): below the overview's split height = lower level
+      lower: meta.lowerMaxZ !== null && typeof pos.z === 'number' && pos.z < meta.lowerMaxZ
     };
   }
 
@@ -260,11 +86,6 @@
     const humanColor = isHumanCT ? '#38bdf8' : '#f59e0b';
     const botColor = isHumanCT ? '#ef4444' : '#38bdf8';
 
-    const sitesHtml = (meta.sites || []).map(s => {
-      const cls = s.kind === 'site' ? '#facc15' : s.kind === 'spawn' ? '#94a3b8' : '#cbd5e1';
-      const size = s.kind === 'site' ? 6.2 : 4.2;
-      return `<text x="${s.x}" y="${s.y}" text-anchor="middle" dominant-baseline="central" fill="${cls}" fill-opacity="${s.kind === 'site' ? 0.9 : 0.5}" font-family="JetBrains Mono, monospace" font-weight="800" font-size="${size}">${s.label}</text>`;
-    }).join('');
 
     // Render Bots (from real GSI positions or smooth simulation patrol)
     const botsHtml = (bots || []).slice(0, 10).map((b, idx) => {
@@ -274,10 +95,7 @@
 
       if (!pt) {
         // Fallback tactical patrol positions for simulation or non-allplayers GSI
-        const siteA = meta.sites.find(s => s.label === 'A') || { x: 68, y: 30 };
-        const siteB = meta.sites.find(s => s.label === 'B') || { x: 26, y: 30 };
-        const mid = meta.sites.find(s => s.label === 'MID') || { x: 50, y: 50 };
-        const anchors = [siteA, siteB, mid];
+        const anchors = [SIM_ANCHORS.A, SIM_ANCHORS.B, SIM_ANCHORS.MID];
         const anchor = anchors[idx % anchors.length];
         const phase = simTick * 0.04 + idx * 1.15;
         pt = {
@@ -298,10 +116,10 @@
         ? `<path d="M0,0 L7,-3.5 L7,3.5 Z" fill="${botColor}" fill-opacity="0.24" transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)}) rotate(${angle.toFixed(1)})"/>`
         : '';
 
-      return `
+      return `<g ${pt.lower ? 'opacity="0.55"' : ''}>
         ${cone}
-        <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.1" fill="${botColor}" stroke="#070a10" stroke-width="0.7"/>
-      `;
+        <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.1" fill="${pt.lower ? 'none' : botColor}" stroke="${pt.lower ? botColor : '#070a10'}" stroke-width="${pt.lower ? 0.9 : 0.7}"/>
+      </g>`;
     }).join('');
 
     // Render Human Players
@@ -312,8 +130,8 @@
       let angle = getForwardAngleDeg(p.forward);
 
       if (!pt) {
-        const spawn = meta.sites.find(s => s.label === humanSide) || { x: 45, y: 74 };
-        const mid = meta.sites.find(s => s.label === 'MID') || { x: 50, y: 50 };
+        const spawn = SIM_ANCHORS[humanSide] || SIM_ANCHORS.CT;
+        const mid = SIM_ANCHORS.MID;
         const progress = Math.min(0.85, 0.25 + ((simTick % 60) / 60) * 0.55);
         const phase = simTick * 0.05 + idx * 0.9;
         pt = {
@@ -339,12 +157,16 @@
         ? `<path d="M0,0 L10,-5 L10,5 Z" fill="${humanColor}" fill-opacity="${isFocused ? '0.38' : '0.25'}" transform="translate(${pt.x.toFixed(1)},${pt.y.toFixed(1)}) rotate(${angle.toFixed(1)})"/>`
         : '';
 
-      return `
+      const lowerRing = pt.lower
+        ? `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="4" fill="none" stroke="${humanColor}" stroke-width="0.6" stroke-dasharray="1 0.8"/>`
+        : '';
+      return `<g ${pt.lower ? 'opacity="0.7"' : ''}>
         ${cone}
+        ${lowerRing}
         ${isFocused ? `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="4.6" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-opacity="0.75"/>` : ''}
         <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3.1" fill="${humanColor}" stroke="#070a10" stroke-width="0.8"/>
         <text x="${pt.x.toFixed(1)}" y="${pt.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#04070d" font-family="JetBrains Mono, monospace" font-weight="900" font-size="3.2">${idx + 1}</text>
-      `;
+      </g>`;
     }).join('');
 
     // Render Bomb (planted / dropped / carried)
@@ -369,8 +191,9 @@
         </defs>
         <rect width="100" height="100" fill="#070c14"/>
         <rect width="100" height="100" fill="url(#radar-grid)"/>
-        ${meta.geometry}
-        ${sitesHtml}
+        ${meta.image
+          ? `<image href="${meta.image}" x="0" y="0" width="100" height="100" preserveAspectRatio="none"/>`
+          : `<text x="50" y="50" text-anchor="middle" dominant-baseline="central" fill="#64748b" font-family="JetBrains Mono, monospace" font-size="3.4">NO RADAR FOR ${meta.label}</text>`}
         ${botsHtml}
         ${playersHtml}
         ${bombHtml}
@@ -379,7 +202,7 @@
   }
 
   window.CS2_RADAR = {
-    CS2_RADAR_MAPS,
+    resolveMapKey,
     getRadarMapMeta,
     projectGsiToRadarPct,
     buildLiveRadarSvg
