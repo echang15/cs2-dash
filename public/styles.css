@@ -4775,6 +4775,42 @@ body.view-mode-kiosk .kiosk-view {
   pointer-events: none;
 }
 
+/* Flashbang glare, matching the squad card's .is-flashed effect but scaled by flash intensity */
+.kiosk-flash-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.45) 55%, rgba(255, 255, 255, 0.12) 100%);
+  opacity: var(--kiosk-flash, 0);
+  transition: opacity 0.35s ease-out;
+  pointer-events: none;
+}
+
+.kiosk-card.is-flashed {
+  border-color: #ffffff;
+}
+
+.kiosk-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.kiosk-flash-pill {
+  display: none;
+  font-family: var(--font-tactical);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 2px 14px;
+  background: var(--flash-white);
+  color: #0a0d14;
+}
+
+.kiosk-card.is-flashed .kiosk-flash-pill {
+  display: inline-block;
+}
+
 .kiosk-card.is-dead {
   border-color: #3a3d44;
   box-shadow: none;
@@ -4794,7 +4830,6 @@ body.view-mode-kiosk .kiosk-view {
 }
 
 .kiosk-identity,
-.kiosk-stats,
 .kiosk-status-banner {
   position: relative;
   z-index: 1;
@@ -4827,7 +4862,6 @@ body.view-mode-kiosk .kiosk-view {
 }
 
 .kiosk-side-pill {
-  align-self: flex-start;
   font-family: var(--font-tactical);
   font-size: 30px;
   font-weight: 700;
@@ -4864,6 +4898,82 @@ body.view-mode-kiosk .kiosk-view {
   opacity: 1;
 }
 
+.kiosk-kd {
+  margin-left: auto;
+  display: flex;
+  gap: 56px;
+}
+
+.kiosk-kd-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.kiosk-kd-value {
+  font-family: var(--font-display);
+  font-size: 150px;
+  font-weight: 800;
+  line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+}
+
+.kiosk-deaths {
+  color: var(--text-secondary);
+}
+
+.kiosk-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.kiosk-utility {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  transition: filter 2s ease, opacity 2s ease;
+}
+
+.kiosk-utility-belt {
+  display: flex;
+  gap: 18px;
+}
+
+.kiosk-nade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(5, 8, 13, 0.6);
+  border: 2px solid currentColor;
+  color: var(--text-primary);
+}
+
+.kiosk-nade svg {
+  width: 56px;
+  height: 56px;
+}
+
+.kiosk-nade.nade-smoke { color: #c9d1dc; }
+.kiosk-nade.nade-flash { color: #fff6b0; }
+.kiosk-nade.nade-he { color: var(--hp-high); }
+.kiosk-nade.nade-molotov { color: var(--burn-orange); }
+.kiosk-nade.nade-decoy { color: var(--text-secondary); }
+
+.kiosk-nade-empty {
+  font-family: var(--font-tactical);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
 .kiosk-stats {
   display: grid;
   grid-template-columns: 1fr 1fr 1.25fr;
@@ -4872,6 +4982,7 @@ body.view-mode-kiosk .kiosk-view {
 }
 
 .kiosk-card.is-dead .kiosk-stats,
+.kiosk-card.is-dead .kiosk-utility,
 .kiosk-card.is-dead .kiosk-identity {
   filter: grayscale(1);
   opacity: 0.45;
@@ -4902,6 +5013,41 @@ body.view-mode-kiosk .kiosk-view {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+}
+
+.kiosk-stat-ammo {
+  position: relative;
+}
+
+/* Current gun with its equipped skin, floating above the ammo count */
+.kiosk-weapon-art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  height: 260px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.kiosk-weapon-art .weapon-skinned-silhouette,
+.kiosk-weapon-art svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  color: var(--text-primary);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.9));
+}
+
+/* Steam renders are 512x384 with wide transparent margins above and below the gun */
+.kiosk-weapon-art img.weapon-skin-photo {
+  height: auto;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: center 52%;
 }
 
 .kiosk-helmet-tag {

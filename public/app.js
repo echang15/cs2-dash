@@ -2025,17 +2025,36 @@ function ensureKioskSkeleton() {
       <div class="kiosk-card-bg"></div>
       <div class="kiosk-damage-tint"></div>
       <div class="kiosk-death-tint"></div>
+      <div class="kiosk-flash-glare"></div>
 
       <header class="kiosk-identity">
         <div class="kiosk-avatar-wrap"><img class="kiosk-avatar" id="kiosk-avatar" alt="" decoding="async" hidden /></div>
         <div class="kiosk-name-block">
-          <span class="kiosk-side-pill" id="kiosk-side-pill">CT</span>
+          <div class="kiosk-pill-row">
+            <span class="kiosk-side-pill" id="kiosk-side-pill">CT</span>
+            <span class="kiosk-flash-pill" id="kiosk-flash-pill">FLASHED</span>
+          </div>
           <h1 class="kiosk-name" id="kiosk-name">OPERATOR</h1>
+        </div>
+        <div class="kiosk-kd">
+          <div class="kiosk-kd-stat">
+            <span class="kiosk-stat-label">KILLS</span>
+            <span class="kiosk-kd-value kiosk-kills" id="kiosk-kills-value">0</span>
+          </div>
+          <div class="kiosk-kd-stat">
+            <span class="kiosk-stat-label">DEATHS</span>
+            <span class="kiosk-kd-value kiosk-deaths" id="kiosk-deaths-value">0</span>
+          </div>
         </div>
       </header>
 
       <div class="kiosk-status-banner" id="kiosk-status-banner">ELIMINATED</div>
 
+      <div class="kiosk-bottom">
+      <div class="kiosk-utility">
+        <span class="kiosk-stat-label">UTILITY</span>
+        <div class="kiosk-utility-belt" id="kiosk-utility-belt"></div>
+      </div>
       <div class="kiosk-stats">
         <div class="kiosk-stat kiosk-stat-health">
           <span class="kiosk-stat-label">HEALTH</span>
@@ -2048,10 +2067,12 @@ function ensureKioskSkeleton() {
           <div class="kiosk-bar"><div class="kiosk-bar-fill" id="kiosk-armor-fill"></div></div>
         </div>
         <div class="kiosk-stat kiosk-stat-ammo">
+          <div class="kiosk-weapon-art" id="kiosk-weapon-art"></div>
           <span class="kiosk-stat-label" id="kiosk-weapon-name">AMMO</span>
           <span class="kiosk-stat-value"><span id="kiosk-ammo-clip">30</span><span class="kiosk-ammo-reserve" id="kiosk-ammo-reserve">/ 90</span></span>
           <div class="kiosk-bar"><div class="kiosk-bar-fill" id="kiosk-ammo-fill"></div></div>
         </div>
+      </div>
       </div>
     </article>
   `;
@@ -2082,10 +2103,15 @@ function renderKioskView() {
   const bgUrl = getCardBackgroundUrl(currentSide, currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1));
   const avatarUrl = getPlayerAvatarUrl(p.name);
 
-  const desiredClassName = `kiosk-card side-${currentSide.toLowerCase()} ${isAlive ? '' : 'is-dead'} ${isAlive && health <= 25 ? 'low-health' : isAlive && health <= 50 ? 'mid-health' : ''}`.replace(/\s+/g, ' ').trim();
+  const flashed = Math.max(0, Math.min(255, Number(p.flashed) || 0));
+  const isFlashed = isAlive && flashed > 30;
+  const desiredClassName = `kiosk-card side-${currentSide.toLowerCase()} ${isAlive ? '' : 'is-dead'} ${isAlive && health <= 25 ? 'low-health' : isAlive && health <= 50 ? 'mid-health' : ''} ${isFlashed ? 'is-flashed' : ''}`.replace(/\s+/g, ' ').trim();
   if (cardEl.className !== desiredClassName) cardEl.className = desiredClassName;
   // 0 at full health -> 1 at 0 HP; the tint layer transitions slowly toward this value
   cardEl.style.setProperty('--kiosk-damage', ((100 - health) / 100).toFixed(2));
+  // GSI flashed is 0-255 and decays as the player recovers; the glare follows it down
+  cardEl.style.setProperty('--kiosk-flash', isFlashed ? (flashed / 255).toFixed(2) : '0');
+  setKioskText('kiosk-flash-pill', `FLASHED ${Math.round((flashed / 255) * 100)}%`);
   if (cardEl.dataset.bgUrl !== bgUrl) {
     cardEl.dataset.bgUrl = bgUrl;
     cardEl.style.setProperty('--kiosk-bg', `url('${bgUrl}')`);
@@ -2101,6 +2127,24 @@ function renderKioskView() {
   setKioskText('kiosk-side-pill', currentSide === 'T' ? 'TERRORIST' : 'COUNTER-TERRORIST');
   setKioskText('kiosk-status-banner', 'ELIMINATED // OUT FOR THE ROUND');
 
+  setKioskText('kiosk-kills-value', String(Math.max(0, Number(p.kills) || 0)));
+  setKioskText('kiosk-deaths-value', String(Math.max(0, Number(p.deaths) || 0)));
+
+  const beltEl = document.getElementById('kiosk-utility-belt');
+  const grenades = Array.isArray(p.grenades) ? p.grenades : [];
+  const beltSig = grenades.join(',');
+  if (beltEl && beltEl.dataset.sig !== beltSig) {
+    beltEl.dataset.sig = beltSig;
+    const labelMap = { smoke: 'Smoke', flash: 'Flashbang', he: 'HE grenade', molotov: 'Molotov', decoy: 'Decoy' };
+    beltEl.innerHTML = grenades.length > 0
+      ? grenades.map(gType => `
+        <div class="kiosk-nade nade-${gType}" title="${labelMap[gType] || 'Utility'}">
+          ${UTILITY_SVGS[gType] || UTILITY_SVGS.he}
+        </div>
+      `).join('')
+      : '<span class="kiosk-nade-empty">NONE</span>';
+  }
+
   setKioskText('kiosk-health-value', String(health));
   setKioskText('kiosk-armor-value', String(armor));
   const helmetTag = document.getElementById('kiosk-helmet-tag');
@@ -2109,6 +2153,12 @@ function renderKioskView() {
   document.getElementById('kiosk-armor-fill').style.width = `${armor}%`;
 
   const weapon = getKioskAmmoWeapon(p);
+  const artEl = document.getElementById('kiosk-weapon-art');
+  const artSig = weapon ? `${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.paintkit || ''}` : '';
+  if (artEl && artEl.dataset.sig !== artSig) {
+    artEl.dataset.sig = artSig;
+    artEl.innerHTML = weapon ? getWeaponSilhouetteHtml(weapon.id || weapon.name, weapon.skin, weapon) : '';
+  }
   const clipMax = weapon ? Number(weapon.clipMax) || 0 : 0;
   const clip = weapon ? Math.max(0, Number(weapon.clip) || 0) : 0;
   if (clipMax > 0) {
