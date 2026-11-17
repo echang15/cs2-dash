@@ -411,6 +411,7 @@ const BOT_NAMES = [
 // Global Dashboard State
 const appState = {
   mode: 'simulation', // 'simulation' | 'gsi'
+  avatars: {}, // normalized player name -> { name, url }
   simPaused: false,
   humanSide: 'CT',
   botSide: 'T',
@@ -441,7 +442,7 @@ const appState = {
   seenServerKillIds: new Set(),
   damageTrails: Array.from({ length: 10 }, () => 100),
   displayRes: '1080p', // '1080p' | '1440p' | '5120x1440'
-  viewMode: 'squad', // 'squad' | 'player'
+  viewMode: 'squad', // 'squad' | 'player' | 'kiosk'
   ingestionMode: 'simulation', // 'simulation' | 'multi_client' | 'spectator_allplayers'
   soloViewDismissed: false,
   selectedPlayerIdx: 0, // 0..9
@@ -782,7 +783,7 @@ function initSimulationState() {
 function initRouteAndResolutionFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const path = window.location.pathname || '';
-  const pathMatch = path.match(/\/player\/(10|[1-9])/i);
+  const pathMatch = path.match(/\/(?:player|kiosk)\/(10|[1-9])/i);
 
   const squadParam = Number(params.get('squad') || params.get('players'));
   if (squadParam >= 1 && squadParam <= 10) {
@@ -790,13 +791,16 @@ function initRouteAndResolutionFromUrl() {
   }
 
   const slotParam = params.get('slot') || params.get('player') || (pathMatch ? pathMatch[1] : null);
+  const isKioskRoute = path.includes('/kiosk') || params.get('view') === 'kiosk';
   const isPlayerRoute =
     document.body.dataset.defaultView === 'player' ||
     path.includes('/player') ||
     params.get('view') === 'player' ||
     Boolean(slotParam);
 
-  if (isPlayerRoute) {
+  if (isKioskRoute) {
+    appState.viewMode = 'kiosk';
+  } else if (isPlayerRoute) {
     appState.viewMode = 'player';
   }
   if (slotParam) {
@@ -859,6 +863,7 @@ function isSoloClientActive() {
 }
 
 function getEffectiveViewMode() {
+  if (appState.viewMode === 'kiosk') return 'kiosk';
   if (appState.viewMode === 'player' || isSoloClientActive()) {
     return 'player';
   }
@@ -934,6 +939,8 @@ function renderTopHeader() {
   ];
   if (effectiveViewMode === 'player') {
     classes.push('view-mode-player');
+  } else if (effectiveViewMode === 'kiosk') {
+    classes.push('view-mode-kiosk');
   }
   if (soloActive) {
     classes.push('solo-client-mode');
@@ -1198,6 +1205,7 @@ function renderPlayersStage() {
     const slotCfg = appState.customCallsigns[idx] || DEFAULT_CALLSIGNS[idx] || DEFAULT_CALLSIGNS[0];
     const activeBgId = currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1);
     const bgUrl = getCardBackgroundUrl(currentSide, activeBgId);
+    const avatarUrl = getPlayerAvatarUrl(p.name);
 
     const now = Date.now();
     const celeb = appState.killCelebrations[idx];
@@ -1236,7 +1244,10 @@ function renderPlayersStage() {
       <div class="card-zone-identity" data-cycle-bg="${idx}" title="Click portrait background to cycle ${currentSide} Lobby Skin (${activeBgId}/11)">
         <div class="operator-hero-row">
           <div class="operator-name-block">
-            <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
+            <div class="operator-callsign-group">
+              ${avatarUrl ? `<img class="operator-avatar" src="${avatarUrl}" alt="" decoding="async" />` : ''}
+              <h2 class="operator-callsign" data-edit-callsign="${idx}" title="Click to edit callsign">${p.name}</h2>
+            </div>
             <div class="operator-sub-status">
               ${statusPills.join('')}
               <a href="/player.html?slot=${idx + 1}" class="player-inspect-pill" data-open-player="${idx}" title="Open Individual Player Deep-Dive View (/player.html?slot=${idx + 1})">INSPECT &#8599;</a>
@@ -1357,7 +1368,7 @@ function renderPlayersStage() {
     `;
 
     // Only update card innerHTML when content actually changes; if kill flash is active with the same celebId, preserve the banner animation
-    const contentSig = `${celebId}|${p.name}|${p.health}|${trailHp}|${p.armor}|${p.helmet}|${p.flashed}|${p.burning}|${p.hasC4}|${p.defuseKit}|${isCtOnHostage}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${p.reloading}|${sidearm.name}|${sidearm.clip}|${sidearm.reserve}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${playerRoundDmg}|${playerRoundKills}|${totalRoundBotKills}|${activeBgId}`;
+    const contentSig = `${celebId}|${p.name}|${p.health}|${trailHp}|${p.armor}|${p.helmet}|${p.flashed}|${p.burning}|${p.hasC4}|${p.defuseKit}|${isCtOnHostage}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${p.reloading}|${sidearm.name}|${sidearm.clip}|${sidearm.reserve}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${playerRoundDmg}|${playerRoundKills}|${totalRoundBotKills}|${activeBgId}|${avatarUrl}`;
     if (cardEl.dataset.contentSig !== contentSig) {
       const hadSameCeleb = isKillFlash && cardEl.dataset.celebId === celebId;
       if (hadSameCeleb) {
@@ -1537,7 +1548,7 @@ function renderUltrawideWing() {
           <div class="uw-mvp-stats">
             <div>
               <div class="uw-panel-sub">SLOT ${String(mvpIdx + 1).padStart(2, '0')} // ${currentSide} OPERATOR</div>
-              <div class="uw-mvp-name">${mvp.name}</div>
+              <div class="uw-mvp-name">${getPlayerAvatarUrl(mvp.name) ? `<img class="operator-avatar uw-mvp-avatar" src="${getPlayerAvatarUrl(mvp.name)}" alt="" decoding="async" />` : ''}${mvp.name}</div>
             </div>
             <div class="stats-grid-4">
               <div class="stat-cell highlight">
@@ -1779,7 +1790,7 @@ function renderPlayerDetailView() {
     : '';
 
   const standaloneUrl = `/player.html?slot=${safeIdx + 1}`;
-  const detailSig = `${soloActive}|${posSig}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
+  const detailSig = `${soloActive}|${posSig}|${safeIdx}|${appState.roundNumber}|${appState.mapName}|${currentSide}|${activeBgId}|${getPlayerAvatarUrl(p.name)}|${p.name}|${p.health}|${p.armor}|${p.helmet}|${p.hasC4}|${p.defuseKit}|${p.reloading}|${flashedPct}|${smokedPct}|${burningPct}|${activityState}|${weapon.id}|${weapon.name}|${weapon.skin}|${weapon.clip}|${weapon.reserve}|${sidearm.id}|${sidearm.name}|${sidearm.skin}|${sidearm.clip}|${sidearm.reserve}|${knife.name}|${knife.skin}|${hasZeus}|${(p.grenades || []).join(',')}|${p.money}|${p.equipValue}|${p.kills}|${p.deaths}|${p.assists}|${p.adr}|${p.hsPercent}|${p.roundDamage}|${p.roundKills}|${roundHistory.map(r => `${r.rNum}:${r.val}:${r.kills}`).join(',')}|${orderedFeed.map(k => k.id).join(',')}|${botsList.map(b => `${b.name}:${b.health}`).join(',')}|${clientPackets}|${appState.players.map(op => `${op.name}:${op.health}`).join(',')}`;
   if (detailEl.dataset.detailSig === detailSig) return;
   detailEl.dataset.detailSig = detailSig;
 
@@ -1814,6 +1825,7 @@ function renderPlayerDetailView() {
             ${p.defuseKit ? `<span class="status-pill defuse-kit">${kitPillLabel}</span>` : ''}
             ${hasZeus ? `<span class="status-pill" style="background:rgba(250,204,21,0.16); border-color:rgba(250,204,21,0.5); color:#fde047;">ZEUS x27</span>` : ''}
           </div>
+          ${getPlayerAvatarUrl(p.name) ? `<img class="pd-hero-avatar" src="${getPlayerAvatarUrl(p.name)}" alt="${escapeHtml(p.name)} profile photo" decoding="async" />` : ''}
           <h2 class="pd-hero-callsign" data-edit-callsign="${safeIdx}" title="Click to edit callsign">${p.name}</h2>
           <div class="pd-hero-skin-label">${bgItem.label}</div>
         </div>
@@ -1986,6 +1998,133 @@ function renderPlayerDetailView() {
   `;
 }
 
+/* ==========================================================================
+   KIOSK HERO CARD (/kiosk, /kiosk/:slot) — single-player audience TV view
+   ========================================================================== */
+function getKioskAmmoWeapon(p) {
+  const hasMag = w => w && Number(w.clipMax) > 0;
+  if (hasMag(p.activeWeapon)) return p.activeWeapon;
+  if (hasMag(p.primaryWeapon)) return p.primaryWeapon;
+  if (hasMag(p.secondaryWeapon)) return p.secondaryWeapon;
+  return p.activeWeapon || null;
+}
+
+function ensureKioskSkeleton() {
+  let kioskEl = document.getElementById('kiosk-view');
+  if (kioskEl) return kioskEl;
+  const stage = document.getElementById('broadcast-stage');
+  if (!stage) return null;
+
+  // Built once and updated in place so the damage / death CSS transitions never restart
+  kioskEl = document.createElement('section');
+  kioskEl.id = 'kiosk-view';
+  kioskEl.className = 'kiosk-view';
+  kioskEl.setAttribute('aria-label', 'Kiosk Player Hero Card');
+  kioskEl.innerHTML = `
+    <article class="kiosk-card" id="kiosk-card">
+      <div class="kiosk-card-bg"></div>
+      <div class="kiosk-damage-tint"></div>
+      <div class="kiosk-death-tint"></div>
+
+      <header class="kiosk-identity">
+        <div class="kiosk-avatar-wrap"><img class="kiosk-avatar" id="kiosk-avatar" alt="" decoding="async" hidden /></div>
+        <div class="kiosk-name-block">
+          <span class="kiosk-side-pill" id="kiosk-side-pill">CT</span>
+          <h1 class="kiosk-name" id="kiosk-name">OPERATOR</h1>
+        </div>
+      </header>
+
+      <div class="kiosk-status-banner" id="kiosk-status-banner">ELIMINATED</div>
+
+      <div class="kiosk-stats">
+        <div class="kiosk-stat kiosk-stat-health">
+          <span class="kiosk-stat-label">HEALTH</span>
+          <span class="kiosk-stat-value" id="kiosk-health-value">100</span>
+          <div class="kiosk-bar"><div class="kiosk-bar-fill" id="kiosk-health-fill"></div></div>
+        </div>
+        <div class="kiosk-stat kiosk-stat-armor">
+          <span class="kiosk-stat-label">ARMOR <span class="kiosk-helmet-tag" id="kiosk-helmet-tag">+ HELMET</span></span>
+          <span class="kiosk-stat-value" id="kiosk-armor-value">100</span>
+          <div class="kiosk-bar"><div class="kiosk-bar-fill" id="kiosk-armor-fill"></div></div>
+        </div>
+        <div class="kiosk-stat kiosk-stat-ammo">
+          <span class="kiosk-stat-label" id="kiosk-weapon-name">AMMO</span>
+          <span class="kiosk-stat-value"><span id="kiosk-ammo-clip">30</span><span class="kiosk-ammo-reserve" id="kiosk-ammo-reserve">/ 90</span></span>
+          <div class="kiosk-bar"><div class="kiosk-bar-fill" id="kiosk-ammo-fill"></div></div>
+        </div>
+      </div>
+    </article>
+  `;
+  stage.appendChild(kioskEl);
+  return kioskEl;
+}
+
+function setKioskText(id, text) {
+  const el = document.getElementById(id);
+  if (el && el.textContent !== text) el.textContent = text;
+}
+
+function renderKioskView() {
+  if (getEffectiveViewMode() !== 'kiosk') return;
+  const kioskEl = ensureKioskSkeleton();
+  if (!kioskEl) return;
+
+  const safeIdx = Math.max(0, Math.min(appState.players.length - 1, appState.selectedPlayerIdx || 0));
+  const p = appState.players[safeIdx];
+  const cardEl = document.getElementById('kiosk-card');
+  if (!p || !cardEl) return;
+
+  const health = Math.max(0, Math.min(100, Number(p.health) || 0));
+  const armor = Math.max(0, Math.min(100, Number(p.armor) || 0));
+  const isAlive = health > 0;
+  const currentSide = (p.team || appState.humanSide) === 'T' ? 'T' : 'CT';
+  const slotCfg = appState.customCallsigns[safeIdx] || DEFAULT_CALLSIGNS[safeIdx] || DEFAULT_CALLSIGNS[0];
+  const bgUrl = getCardBackgroundUrl(currentSide, currentSide === 'T' ? (slotCfg.tBg || 1) : (slotCfg.ctBg || 1));
+  const avatarUrl = getPlayerAvatarUrl(p.name);
+
+  const desiredClassName = `kiosk-card side-${currentSide.toLowerCase()} ${isAlive ? '' : 'is-dead'} ${isAlive && health <= 25 ? 'low-health' : isAlive && health <= 50 ? 'mid-health' : ''}`.replace(/\s+/g, ' ').trim();
+  if (cardEl.className !== desiredClassName) cardEl.className = desiredClassName;
+  // 0 at full health -> 1 at 0 HP; the tint layer transitions slowly toward this value
+  cardEl.style.setProperty('--kiosk-damage', ((100 - health) / 100).toFixed(2));
+  if (cardEl.dataset.bgUrl !== bgUrl) {
+    cardEl.dataset.bgUrl = bgUrl;
+    cardEl.style.setProperty('--kiosk-bg', `url('${bgUrl}')`);
+  }
+
+  const avatarEl = document.getElementById('kiosk-avatar');
+  if (avatarEl) {
+    if (avatarUrl && avatarEl.getAttribute('src') !== avatarUrl) avatarEl.setAttribute('src', avatarUrl);
+    avatarEl.hidden = !avatarUrl;
+  }
+
+  setKioskText('kiosk-name', p.name);
+  setKioskText('kiosk-side-pill', currentSide === 'T' ? 'TERRORIST' : 'COUNTER-TERRORIST');
+  setKioskText('kiosk-status-banner', 'ELIMINATED // OUT FOR THE ROUND');
+
+  setKioskText('kiosk-health-value', String(health));
+  setKioskText('kiosk-armor-value', String(armor));
+  const helmetTag = document.getElementById('kiosk-helmet-tag');
+  if (helmetTag) helmetTag.hidden = !(p.helmet && armor > 0);
+  document.getElementById('kiosk-health-fill').style.width = `${health}%`;
+  document.getElementById('kiosk-armor-fill').style.width = `${armor}%`;
+
+  const weapon = getKioskAmmoWeapon(p);
+  const clipMax = weapon ? Number(weapon.clipMax) || 0 : 0;
+  const clip = weapon ? Math.max(0, Number(weapon.clip) || 0) : 0;
+  if (clipMax > 0) {
+    setKioskText('kiosk-weapon-name', p.reloading ? `${weapon.name} // RELOADING` : weapon.name);
+    setKioskText('kiosk-ammo-clip', String(clip));
+    setKioskText('kiosk-ammo-reserve', `/ ${Math.max(0, Number(weapon.reserve) || 0)}`);
+    document.getElementById('kiosk-ammo-fill').style.width = `${Math.min(100, Math.round((clip / clipMax) * 100))}%`;
+  } else {
+    setKioskText('kiosk-weapon-name', weapon ? weapon.name : 'AMMO');
+    setKioskText('kiosk-ammo-clip', '—');
+    setKioskText('kiosk-ammo-reserve', '');
+    document.getElementById('kiosk-ammo-fill').style.width = '0%';
+  }
+  kioskEl.classList.toggle('low-ammo', clipMax > 0 && clip / clipMax <= 0.25);
+}
+
 function renderFloatingRadar() {
   const panelEl = document.getElementById('radar-floating-panel');
   const canvasEl = document.getElementById('radar-floating-canvas');
@@ -2026,6 +2165,7 @@ function renderAll() {
   renderDockedRadarWing();
   renderUltrawideWing();
   renderPlayerDetailView();
+  renderKioskView();
   renderFloatingRadar();
   renderClientsAndLogsPanel();
 }
@@ -2697,7 +2837,7 @@ function applyServerGsiState(serverState) {
 let audioCtx = null;
 
 function playNotificationChime(kind = 'connect') {
-  if (!appState.notifSoundEnabled) return;
+  if (!appState.notifSoundEnabled || appState.viewMode === 'kiosk') return;
   try {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
@@ -3017,6 +3157,11 @@ function connectSse() {
             applyServerGsiState(payload.state);
           }
           renderClientsAndLogsPanel();
+          return;
+        }
+
+        if (payload.type === 'avatars_updated') {
+          applyAvatarList(payload.avatars);
           return;
         }
 
@@ -3455,6 +3600,11 @@ function bindControls() {
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') modal.classList.remove('open');
+    if (appState.viewMode === 'kiosk' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && appState.players.length > 0) {
+      const count = appState.players.length;
+      appState.selectedPlayerIdx = (appState.selectedPlayerIdx + (e.key === 'ArrowRight' ? 1 : count - 1)) % count;
+      renderKioskView();
+    }
   });
 
   document.getElementById('btn-copy-cfg').addEventListener('click', (e) => {
@@ -3841,6 +3991,7 @@ initRosterEditor();
 updateGsiConfigModalText();
 bindControls();
 initWledController();
+initAvatarController();
 renderAll();
 connectSse();
 
@@ -4321,5 +4472,289 @@ function initWledController() {
         message: 'Add and enable at least one WLED device above to test effects.'
       });
     }
+  });
+}
+
+/* ==========================================================================
+   PLAYER PROFILE PHOTOS (AVATARS)
+   Photos are keyed by normalized player name and center-cropped + resized to a
+   square JPEG in the browser before upload, so the server never stores originals.
+   ========================================================================== */
+function normalizePlayerNameKey(name) {
+  return String(name || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getPlayerAvatarUrl(name) {
+  const entry = appState.avatars[normalizePlayerNameKey(name)];
+  return entry ? entry.url : '';
+}
+
+function applyAvatarList(list) {
+  const next = {};
+  (Array.isArray(list) ? list : []).forEach(a => {
+    if (a && a.key && a.url) next[a.key] = { name: a.name, url: a.url };
+  });
+  appState.avatars = next;
+  renderAll();
+  renderAvatarModal();
+}
+
+async function fetchAvatars() {
+  try {
+    const res = await fetch('/api/avatars');
+    const data = await res.json();
+    if (data && data.ok) applyAvatarList(data.avatars);
+  } catch (_) {}
+}
+
+async function decodeImageFile(file) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      // 'from-image' applies EXIF rotation so phone photos aren't sideways
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch (_) {}
+  }
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = objectUrl;
+    await img.decode();
+    return img;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function resizeImageToAvatarJpeg(file, targetSize = 512) {
+  if (!file || !/^image\//.test(file.type)) {
+    throw new Error('Please choose an image file (JPG, PNG, WebP, GIF).');
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error('Image is larger than 25 MB.');
+  }
+
+  let source;
+  try {
+    source = await decodeImageFile(file);
+  } catch (_) {
+    throw new Error('This browser could not read that image format.');
+  }
+
+  const srcW = source.width;
+  const srcH = source.height;
+  if (!srcW || !srcH) throw new Error('Image has no pixels.');
+
+  // Square center crop; on tall portraits bias toward the top where faces usually are
+  const side = Math.min(srcW, srcH);
+  const sx = (srcW - side) / 2;
+  const sy = srcH > srcW ? (srcH - side) * 0.25 : (srcH - side) / 2;
+  const outSize = Math.max(1, Math.min(targetSize, side));
+
+  const makeCanvas = (size) => {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    return [c, ctx];
+  };
+
+  // Halve repeatedly for large downscales; a single huge step aliases badly in some browsers
+  let stepSize = side;
+  let [canvas, ctx] = makeCanvas(stepSize);
+  ctx.drawImage(source, sx, sy, side, side, 0, 0, stepSize, stepSize);
+  while (stepSize / 2 >= outSize) {
+    const nextSize = Math.round(stepSize / 2);
+    const [nextCanvas, nextCtx] = makeCanvas(nextSize);
+    nextCtx.drawImage(canvas, 0, 0, stepSize, stepSize, 0, 0, nextSize, nextSize);
+    canvas = nextCanvas;
+    stepSize = nextSize;
+  }
+
+  // Flatten onto a dark backdrop so transparent PNGs don't turn black/odd in JPEG
+  const [finalCanvas, finalCtx] = makeCanvas(outSize);
+  finalCtx.fillStyle = '#0b1220';
+  finalCtx.fillRect(0, 0, outSize, outSize);
+  finalCtx.drawImage(canvas, 0, 0, stepSize, stepSize, 0, 0, outSize, outSize);
+  if (typeof source.close === 'function') source.close();
+
+  const toJpeg = (quality) => new Promise(resolve => finalCanvas.toBlob(resolve, 'image/jpeg', quality));
+  let blob = null;
+  for (const quality of [0.88, 0.8, 0.7, 0.6]) {
+    blob = await toJpeg(quality);
+    if (blob && blob.size <= 480 * 1024) break;
+  }
+  if (!blob) throw new Error('Could not encode the resized image.');
+  return { blob, size: outSize };
+}
+
+async function uploadPlayerAvatar(name, file) {
+  const { blob } = await resizeImageToAvatarJpeg(file);
+  const res = await fetch(`/api/avatars?name=${encodeURIComponent(name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/jpeg' },
+    body: blob
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+  applyAvatarList(data.avatars);
+}
+
+async function removePlayerAvatar(name) {
+  const res = await fetch(`/api/avatars?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+  const data = await res.json().catch(() => ({}));
+  if (data && data.ok) applyAvatarList(data.avatars);
+}
+
+const avatarUiState = { extraNames: [], historyNames: [], pendingName: '', busyName: '', status: '' };
+
+function getAvatarRosterNames() {
+  const byKey = new Map();
+  const add = (name) => {
+    const clean = String(name || '').trim().replace(/\s+/g, ' ');
+    const key = normalizePlayerNameKey(clean);
+    if (key && !byKey.has(key)) byKey.set(key, clean);
+  };
+  appState.players.forEach(p => add(p.name));
+  avatarUiState.extraNames.forEach(add);
+  Object.values(appState.avatars).forEach(a => add(a.name));
+  avatarUiState.historyNames.forEach(add);
+  return Array.from(byKey.values());
+}
+
+function renderAvatarModal() {
+  const listEl = document.getElementById('avatar-roster-list');
+  if (!listEl) return;
+  const modalEl = document.getElementById('avatar-modal');
+  if (modalEl && modalEl.hidden) return;
+
+  const statusEl = document.getElementById('avatar-status');
+  if (statusEl) statusEl.textContent = avatarUiState.status;
+
+  const names = getAvatarRosterNames();
+  if (names.length === 0) {
+    listEl.innerHTML = `<div class="trends-empty">No players yet. Add a player name above.</div>`;
+    return;
+  }
+  listEl.innerHTML = names.map(name => {
+    const url = getPlayerAvatarUrl(name);
+    const safeName = escapeHtml(name);
+    const isBusy = normalizePlayerNameKey(avatarUiState.busyName) === normalizePlayerNameKey(name);
+    const initials = escapeHtml(name.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase() || '?');
+    return `
+      <div class="avatar-row ${isBusy ? 'is-busy' : ''}" data-avatar-name="${safeName}">
+        <div class="avatar-thumb">
+          ${url ? `<img src="${url}" alt="${safeName} profile photo" decoding="async" />` : `<span class="avatar-initials">${initials}</span>`}
+        </div>
+        <span class="avatar-row-name">${safeName}</span>
+        <div class="avatar-row-actions">
+          <button type="button" class="ctrl-btn mini-btn active" data-avatar-upload="${safeName}" ${isBusy ? 'disabled' : ''}>${isBusy ? 'UPLOADING…' : url ? 'REPLACE' : 'UPLOAD'}</button>
+          ${url ? `<button type="button" class="ctrl-btn mini-btn danger" data-avatar-remove="${safeName}" ${isBusy ? 'disabled' : ''}>REMOVE</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function handleAvatarFile(name, file) {
+  if (!name || !file) return;
+  avatarUiState.busyName = name;
+  avatarUiState.status = `Resizing & uploading photo for ${name}…`;
+  renderAvatarModal();
+  try {
+    await uploadPlayerAvatar(name, file);
+    avatarUiState.status = `Saved photo for ${name}.`;
+  } catch (err) {
+    avatarUiState.status = `Photo for ${name} not saved: ${err.message}`;
+  } finally {
+    avatarUiState.busyName = '';
+    renderAvatarModal();
+  }
+}
+
+async function refreshAvatarHistoryNames() {
+  try {
+    const res = await fetch('/api/trends?limit=5');
+    const data = await res.json();
+    avatarUiState.historyNames = (data.players || []).map(p => p.name).filter(Boolean);
+    renderAvatarModal();
+  } catch (_) {}
+}
+
+function initAvatarController() {
+  fetchAvatars();
+
+  const modalEl = document.getElementById('avatar-modal');
+  const fileInput = document.getElementById('avatar-file-input');
+  const listEl = document.getElementById('avatar-roster-list');
+  if (!modalEl) return;
+
+  document.getElementById('btn-open-avatars')?.addEventListener('click', () => {
+    setModalOpen(modalEl, true);
+    avatarUiState.status = '';
+    renderAvatarModal();
+    refreshAvatarHistoryNames();
+  });
+  document.getElementById('btn-close-avatars')?.addEventListener('click', () => setModalOpen(modalEl, false));
+  modalEl.addEventListener('click', (e) => {
+    if (e.target === modalEl) setModalOpen(modalEl, false);
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modalEl.hidden) setModalOpen(modalEl, false);
+  });
+
+  const addInput = document.getElementById('avatar-new-name');
+  const addName = () => {
+    const name = String(addInput?.value || '').trim().replace(/\s+/g, ' ');
+    if (!name) return;
+    avatarUiState.extraNames.push(name);
+    addInput.value = '';
+    renderAvatarModal();
+  };
+  document.getElementById('btn-avatar-add-name')?.addEventListener('click', addName);
+  addInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addName();
+  });
+
+  listEl?.addEventListener('click', (e) => {
+    const uploadBtn = e.target.closest('[data-avatar-upload]');
+    if (uploadBtn && fileInput) {
+      avatarUiState.pendingName = uploadBtn.getAttribute('data-avatar-upload');
+      fileInput.value = '';
+      fileInput.click();
+      return;
+    }
+    const removeBtn = e.target.closest('[data-avatar-remove]');
+    if (removeBtn) {
+      const name = removeBtn.getAttribute('data-avatar-remove');
+      avatarUiState.status = `Removed photo for ${name}.`;
+      removePlayerAvatar(name);
+    }
+  });
+
+  fileInput?.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    handleAvatarFile(avatarUiState.pendingName, file);
+  });
+
+  // Drag a photo straight onto a player's row
+  listEl?.addEventListener('dragover', (e) => {
+    const row = e.target.closest('[data-avatar-name]');
+    if (!row) return;
+    e.preventDefault();
+    row.classList.add('is-drop-target');
+  });
+  listEl?.addEventListener('dragleave', (e) => {
+    const row = e.target.closest('[data-avatar-name]');
+    if (row && !row.contains(e.relatedTarget)) row.classList.remove('is-drop-target');
+  });
+  listEl?.addEventListener('drop', (e) => {
+    const row = e.target.closest('[data-avatar-name]');
+    if (!row) return;
+    e.preventDefault();
+    row.classList.remove('is-drop-target');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    handleAvatarFile(row.getAttribute('data-avatar-name'), file);
   });
 }

@@ -167,6 +167,7 @@
           <button type="button" class="ctrl-btn" id="btn-toggle-radar" title="Toggle Enlarged Floating Radar Overlay">BIG RADAR</button>
           <button type="button" class="ctrl-btn" id="btn-open-trends" title="View Historical Performance Trends Over Time">TRENDS</button>
           <button type="button" class="ctrl-btn" id="btn-open-wled" title="Configure WLED Network Lighting Event Triggers">WLED</button>
+          <button type="button" class="ctrl-btn" id="btn-open-avatars" title="Upload Profile Photos for Each Player">PHOTOS</button>
 
           <!-- Hoverable Simulation & Broadcast Controls Trigger + Modal -->
           <div class="sim-hover-container" id="sim-hover-container">
@@ -433,6 +434,28 @@
         </div>
         <div class="wled-events-list" id="wled-events-list"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Player Profile Photos Modal -->
+  <div class="modal-backdrop" id="avatar-modal" hidden>
+    <div class="modal-panel avatar-modal-panel">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">PLAYER PROFILE PHOTOS</h3>
+          <p class="modal-sub">ONE PHOTO PER PLAYER NAME // AUTO CROPPED TO A SQUARE &amp; RESIZED TO 512PX</p>
+        </div>
+        <button type="button" class="ctrl-btn" id="btn-close-avatars">CLOSE [ESC]</button>
+      </div>
+
+      <div class="wled-add-device-row avatar-add-row">
+        <input type="text" id="avatar-new-name" class="wled-text-input" placeholder="Add a player name not in the current match" maxlength="64" />
+        <button type="button" class="ctrl-btn active" id="btn-avatar-add-name">+ ADD PLAYER</button>
+      </div>
+      <p class="wled-hint avatar-status" id="avatar-status" aria-live="polite"></p>
+
+      <div class="avatar-roster-list" id="avatar-roster-list"></div>
+      <input type="file" id="avatar-file-input" accept="image/*" hidden />
     </div>
   </div>
 

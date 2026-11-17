@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const crypto = require('node:crypto');
 const { WledManager } = require('./wled-manager');
 const { discoverWledDevices } = require('./wled-discovery');
 
@@ -261,6 +262,77 @@ function buildTrendsResponse(playerQuery = '', limit = 30) {
 }
 
 loadPerformanceHistory();
+
+/* ==========================================================================
+   PLAYER PROFILE PHOTO (AVATAR) STORE
+   Browsers crop/resize to a square JPEG before upload; the server only
+   validates and persists it, keyed by normalized player name.
+   ========================================================================== */
+const AVATAR_DIR = path.join(DATA_DIR, 'avatars');
+const AVATAR_INDEX_FILE = path.join(AVATAR_DIR, 'index.json');
+const AVATAR_MAX_BYTES = 512 * 1024;
+const AVATAR_MAX_DIMENSION = 1024;
+let avatarIndex = {}; // fileId -> { name, updatedAt, width, height, bytes }
+
+function normalizePlayerNameKey(name) {
+  return String(name || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function avatarFileIdForName(name) {
+  return crypto.createHash('sha1').update(normalizePlayerNameKey(name)).digest('hex');
+}
+
+function loadAvatarIndex() {
+  try {
+    if (fs.existsSync(AVATAR_INDEX_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(AVATAR_INDEX_FILE, 'utf8'));
+      if (parsed && typeof parsed === 'object') avatarIndex = parsed;
+    }
+  } catch (err) {
+    console.warn('[CS2-DASH] Could not load avatar index:', err.message);
+  }
+}
+
+function saveAvatarIndex() {
+  fs.mkdirSync(AVATAR_DIR, { recursive: true });
+  fs.writeFileSync(AVATAR_INDEX_FILE, JSON.stringify(avatarIndex, null, 2), 'utf8');
+}
+
+function listAvatars() {
+  return Object.entries(avatarIndex)
+    .map(([id, meta]) => ({
+      id,
+      name: meta.name,
+      key: normalizePlayerNameKey(meta.name),
+      updatedAt: meta.updatedAt,
+      url: `/avatars/${id}.jpg?v=${meta.updatedAt}`
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Walk JPEG markers to the SOFn frame header to read pixel dimensions
+function readJpegDimensions(buf) {
+  if (buf.length < 4 || buf[0] !== 0xFF || buf[1] !== 0xD8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xFF) return null;
+    const marker = buf[i + 1];
+    if (marker === 0xFF) { i += 1; continue; }
+    const segLen = buf.readUInt16BE(i + 2);
+    const isSof = marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC;
+    if (isSof) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + segLen;
+  }
+  return null;
+}
+
+function broadcastAvatarsUpdated() {
+  broadcastSseEvent({ type: 'avatars_updated', avatars: listAvatars() });
+}
+
+loadAvatarIndex();
 
 function getClientsSummary() {
   const now = Date.now();
@@ -1594,7 +1666,7 @@ const server = http.createServer((req, res) => {
 
   // CORS headers for cross-machine LAN GSI & browser tools
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -1637,9 +1709,12 @@ const server = http.createServer((req, res) => {
     const viewParam = url.searchParams.get('view') || 'squad';
     const slotParam = url.searchParams.get('slot');
     const targetClient = url.searchParams.get('client') || '';
+    const slotSuffix = slotParam ? ` (SLOT ${String(slotParam).padStart(2, '0')})` : '';
     const viewLabel = viewParam === 'player'
-      ? `PLAYER VIEW${slotParam ? ` (SLOT ${String(slotParam).padStart(2, '0')})` : ''}`
-      : 'SQUAD BROADCAST HUD';
+      ? `PLAYER VIEW${slotSuffix}`
+      : viewParam === 'kiosk'
+        ? `KIOSK HERO CARD${slotSuffix}`
+        : 'SQUAD BROADCAST HUD';
     const displayId = `display-${nextSseClientId++}`;
     const meta = {
       id: displayId,
@@ -1921,9 +1996,96 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve Static Files (including /player and /player/:slot routes)
+  if (req.method === 'GET' && url.pathname === '/api/avatars') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, avatars: listAvatars() }));
+    return;
+  }
+
+  // Body is the already-resized JPEG bytes; player name travels in ?name=
+  if (req.method === 'POST' && url.pathname === '/api/avatars') {
+    const name = String(url.searchParams.get('name') || '').normalize('NFC').trim().replace(/\s+/g, ' ').slice(0, 64);
+    const sendError = (status, error) => {
+      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error }));
+    };
+    if (!name) {
+      sendError(400, 'Missing player name');
+      req.resume();
+      return;
+    }
+    const chunks = [];
+    let total = 0;
+    let aborted = false;
+    req.on('data', chunk => {
+      if (aborted) return;
+      total += chunk.length;
+      if (total > AVATAR_MAX_BYTES) {
+        aborted = true;
+        sendError(413, `Image too large (max ${Math.round(AVATAR_MAX_BYTES / 1024)} KB after resize)`);
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (aborted) return;
+      const buf = Buffer.concat(chunks);
+      const dims = readJpegDimensions(buf);
+      if (!dims) {
+        sendError(415, 'Upload must be a JPEG image');
+        return;
+      }
+      if (dims.width > AVATAR_MAX_DIMENSION || dims.height > AVATAR_MAX_DIMENSION) {
+        sendError(422, `Image must be resized to at most ${AVATAR_MAX_DIMENSION}px`);
+        return;
+      }
+      try {
+        const id = avatarFileIdForName(name);
+        fs.mkdirSync(AVATAR_DIR, { recursive: true });
+        fs.writeFileSync(path.join(AVATAR_DIR, `${id}.jpg`), buf);
+        avatarIndex[id] = { name, updatedAt: Date.now(), width: dims.width, height: dims.height, bytes: buf.length };
+        saveAvatarIndex();
+        broadcastAvatarsUpdated();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, avatars: listAvatars() }));
+      } catch (err) {
+        sendError(500, 'Could not save photo');
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'DELETE' && url.pathname === '/api/avatars') {
+    const id = avatarFileIdForName(url.searchParams.get('name') || '');
+    if (avatarIndex[id]) {
+      delete avatarIndex[id];
+      try { fs.unlinkSync(path.join(AVATAR_DIR, `${id}.jpg`)); } catch (_) {}
+      try { saveAvatarIndex(); } catch (_) {}
+      broadcastAvatarsUpdated();
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, avatars: listAvatars() }));
+    return;
+  }
+
+  const avatarMatch = req.method === 'GET' && url.pathname.match(/^\/avatars\/([a-f0-9]{40})\.jpg$/);
+  if (avatarMatch) {
+    fs.readFile(path.join(AVATAR_DIR, `${avatarMatch[1]}.jpg`), (err, content) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
+        return;
+      }
+      // URLs carry ?v=updatedAt, so a replaced photo always gets a fresh URL
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
+      res.end(content);
+    });
+    return;
+  }
+
+  // Serve Static Files (including /player, /player/:slot, /kiosk and /kiosk/:slot routes)
   let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
-  if (url.pathname === '/player' || /^\/player\/([1-9]|10)$/.test(url.pathname)) {
+  if (/^\/(player|kiosk)(\/([1-9]|10))?$/.test(url.pathname)) {
     filePath = '/player.html';
   }
   const safePath = path.normalize(filePath).replace(/^(\.\.[/\\])+/, '');
